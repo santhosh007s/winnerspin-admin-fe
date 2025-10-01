@@ -1,31 +1,53 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownLeft, DollarSign, TrendingUp } from "lucide-react"
+import { useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  IndianRupeeIcon,
+  TrendingUp,
+} from "lucide-react";
 
 interface Transaction {
-  type: "credit" | "debit"
-  amount: number
-  date: string
+  type: "credit" | "debit";
+  amount: number;
+  date: string;
 }
 
 interface TransactionStatsProps {
-  transactions: Transaction[]
-  loading?: boolean
+  transactions: Transaction[];
+  loading?: boolean;
+  onNetAmountChange?: (value: number) => void; // 🔥 callback for dashboard
 }
 
-export function TransactionStats({ transactions, loading }: TransactionStatsProps) {
+export function TransactionStats({
+  transactions,
+  loading,
+  onNetAmountChange,
+}: TransactionStatsProps) {
   const stats = {
     total: transactions.length,
     credits: transactions.filter((t) => t.type === "credit").length,
     debits: transactions.filter((t) => t.type === "debit").length,
     totalAmount: transactions.reduce((sum, t) => sum + t.amount, 0),
-    creditAmount: transactions.filter((t) => t.type === "credit").reduce((sum, t) => sum + t.amount, 0),
-    debitAmount: transactions.filter((t) => t.type === "debit").reduce((sum, t) => sum + t.amount, 0),
+    creditAmount: transactions
+      .filter((t) => t.type === "credit")
+      .reduce((sum, t) => sum + t.amount, 0),
+    debitAmount: transactions
+      .filter((t) => t.type === "debit")
+      .reduce((sum, t) => sum + t.amount, 0),
     netAmount: 0,
-  }
+  };
 
-  stats.netAmount = stats.creditAmount - stats.debitAmount
+  stats.netAmount = stats.creditAmount - stats.debitAmount;
+
+  // 🔥 send netAmount to DashboardPage
+  useEffect(() => {
+    if (onNetAmountChange) {
+      onNetAmountChange(stats.netAmount);
+    }
+  }, [stats.netAmount, onNetAmountChange]);
 
   if (loading) {
     return (
@@ -42,56 +64,76 @@ export function TransactionStats({ transactions, loading }: TransactionStatsProp
           </Card>
         ))}
       </div>
-    )
+    );
   }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">
+            Total Transactions
+          </CardTitle>
+          <IndianRupeeIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.total}</div>
-          <p className="text-xs text-muted-foreground">${stats.totalAmount.toLocaleString()} total volume</p>
+          <p className="text-xs text-muted-foreground">
+            ₹{stats.totalAmount.toLocaleString()} total volume
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Credits</CardTitle>
-          <ArrowUpRight className="h-4 w-4 text-green-600" />
+          <ArrowDownLeft className="h-4 w-4 text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{stats.credits}</div>
-          <p className="text-xs text-muted-foreground">${stats.creditAmount.toLocaleString()} received</p>
+          <div className="text-2xl font-bold text-green-600">
+            {stats.credits}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            ₹{stats.creditAmount.toLocaleString()} received
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Debits</CardTitle>
-          <ArrowDownLeft className="h-4 w-4 text-red-600" />
+          <ArrowUpRight className="h-4 w-4 text-red-600" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-red-600">{stats.debits}</div>
-          <p className="text-xs text-muted-foreground">${stats.debitAmount.toLocaleString()} paid out</p>
+          <p className="text-xs text-muted-foreground">
+            ₹{stats.debitAmount.toLocaleString()} paid out
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Net Amount</CardTitle>
-          <TrendingUp className={`h-4 w-4 ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`} />
+          <TrendingUp
+            className={`h-4 w-4 ${
+              stats.netAmount >= 0 ? "text-green-600" : "text-red-600"
+            }`}
+          />
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
-            ${Math.abs(stats.netAmount).toLocaleString()}
+          <div
+            className={`text-2xl font-bold ${
+              stats.netAmount >= 0 ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            ₹{Math.abs(stats.netAmount).toLocaleString()}
           </div>
-          <p className="text-xs text-muted-foreground">{stats.netAmount >= 0 ? "Profit" : "Loss"}</p>
+          <p className="text-xs text-muted-foreground">
+            {stats.netAmount >= 0 ? "Profit" : "Loss"}
+          </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

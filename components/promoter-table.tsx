@@ -1,12 +1,24 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useState } from "react";
+import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,57 +28,102 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Eye, Edit, Trash2, Search } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MoreHorizontal, Eye, Edit, Trash2, Search } from "lucide-react";
+import { promoterAPI } from "@/lib/api";
 
 interface Promoter {
-  _id: string
-  userid: string
-  username: string
-  email: string
-  mobNo: string
-  status: "approved" | "pending" | "rejected"
-  balance: number
-  customers: any[]
+  _id: string;
+  userid?: string;
+  username: string;
+  email: string;
+  mobNo: string;
+  status: "approved" | "unapproved" | "inactive";
+  isActive: boolean;
+  balance?: number;
+  customers?: unknown[];
 }
 
 interface PromoterTableProps {
-  promoters: Promoter[]
-  loading?: boolean
-  onDelete: (promoterId: string) => void
-  onStatusChange: (promoterId: string, status: string) => void
+  approvedPromoters?: Promoter[];
+  nonApprovedPromoters?: Promoter[];
+  inactivePromoters?: Promoter[];
+  loading?: boolean;
+  onDelete: (promoterId: string) => void;
+  allInactivePromoters?: Promoter[];
 }
 
-export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: PromoterTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [deletePromoter, setDeletePromoter] = useState<Promoter | null>(null)
+export function PromoterTable({
+  approvedPromoters = [],
+  nonApprovedPromoters = [],
+  inactivePromoters = [],
+  allInactivePromoters = [],
+  loading,
+  onDelete,
+}: PromoterTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deletePromoter, setDeletePromoter] = useState<Promoter | null>(null);
+  const [tab, setTab] = useState<
+    "all" | "approved" | "unapproved" | "inactive"
+  >("all");
 
-  const filteredPromoters = promoters.filter(
-    (promoter) =>
-      promoter.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promoter.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promoter.userid?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Merge all promoters safely
+  const allPromoters = [
+    ...(approvedPromoters || []),
+    ...(nonApprovedPromoters || []),
+    ...(inactivePromoters || []),
+  ].map((p) => ({
+    balance: 0,
+    customers: [],
+    userid: p.username, // fallback if userid missing
+    ...p,
+  }));
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  // Apply tab filter
+  const tabFilteredPromoters =
+    tab === "approved"
+      ? allPromoters.filter((p) => p.status === "approved" && p.isActive)
+      : tab === "unapproved"
+      ? allPromoters.filter((p) => p.status !== "approved" && p.isActive)
+      : tab === "inactive"
+      ? allInactivePromoters
+      : allPromoters;
+
+  // Apply search filter
+  const filteredPromoters = tabFilteredPromoters.filter(
+    (p) =>
+      p.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.userid?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusColor = (promoter: Promoter) => {
+    if (!promoter.isActive || promoter.status === "inactive")
+      return " bg-red-100 text-red-800";
+    switch (promoter.status) {
       case "approved":
-        return "bg-green-100 text-green-800"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "rejected":
-        return "bg-red-100 text-red-800"
+        return "bg-green-100 text-green-800";
+      case "unapproved":
+        return "bg-orange-100 text-orange-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deletePromoter) {
-      onDelete(deletePromoter._id)
-      setDeletePromoter(null)
+      try {
+        await promoterAPI.toggleStatus(deletePromoter._id);
+        onDelete(deletePromoter._id);
+        setDeletePromoter(null);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to delete promoter";
+        alert(message);
+      }
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -76,11 +133,21 @@ export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: 
           <div key={i} className="h-16 bg-muted animate-pulse rounded" />
         ))}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4">
+      {/* Tabs for status filter */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="approved">Approved</TabsTrigger>
+          <TabsTrigger value="unapproved">Unapproved</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -110,24 +177,36 @@ export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: 
           <TableBody>
             {filteredPromoters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={8}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No promoters found
                 </TableCell>
               </TableRow>
             ) : (
               filteredPromoters.map((promoter) => (
                 <TableRow key={promoter._id}>
-                  <TableCell className="font-medium">{promoter.userid}</TableCell>
+                  <TableCell className="font-medium">
+                    {promoter.userid}
+                  </TableCell>
                   <TableCell>{promoter.username}</TableCell>
                   <TableCell>{promoter.email}</TableCell>
                   <TableCell>{promoter.mobNo}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={getStatusColor(promoter.status)}>
-                      {promoter.status}
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(promoter)}
+                    >
+                      {!promoter.isActive || promoter.status === "inactive"
+                        ? "Inactive"
+                        : promoter.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>${promoter.balance.toLocaleString()}</TableCell>
-                  <TableCell>{promoter.customers.length}</TableCell>
+                  <TableCell>
+                    ₹{promoter.balance?.toLocaleString() || 0}
+                  </TableCell>
+                  <TableCell>{promoter.customers?.length || 0}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -148,9 +227,12 @@ export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: 
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => setDeletePromoter(promoter)}>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => setDeletePromoter(promoter)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          Deactivate
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -163,12 +245,16 @@ export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: 
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deletePromoter} onOpenChange={() => setDeletePromoter(null)}>
+      <AlertDialog
+        open={!!deletePromoter}
+        onOpenChange={() => setDeletePromoter(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Promoter</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete promoter "{deletePromoter?.username}"? This action cannot be undone.
+              Are you sure you want to delete promoter{" "}
+              {deletePromoter?.username}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -183,5 +269,5 @@ export function PromoterTable({ promoters, loading, onDelete, onStatusChange }: 
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

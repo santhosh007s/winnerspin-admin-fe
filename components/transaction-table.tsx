@@ -1,81 +1,112 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Search, ArrowUpRight, ArrowDownLeft } from "lucide-react"
+import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  MoreHorizontal,
+  Eye,
+  Search,
+  ArrowUpRight,
+  ArrowDownLeft,
+} from "lucide-react";
 
 interface Transaction {
-  id: string
-  type: "credit" | "debit"
-  amount: number
-  from: string
-  to: string
-  seasonId: string
-  seasonName?: string
-  promoterId?: string
-  promoterName?: string
-  customerId?: string
-  customerName?: string
-  date: string
-  description?: string
-  status: "completed" | "pending" | "failed"
+  id: string;
+  type: "credit" | "debit";
+  amount: number;
+  from: string;
+  to: string;
+  seasonId: string;
+  seasonName?: string;
+  promoterId?: string;
+  promoterName?: string;
+  customerId?: string;
+  customerName?: string;
+  date: string;
+  description?: string;
+  status: "completed" | "pending" | "failed";
 }
 
 interface TransactionTableProps {
-  transactions: Transaction[]
-  loading?: boolean
-  seasons?: Array<{ _id: string; Season: string }>
-  promoters?: Array<{ _id: string; username: string }>
+  transactions: Transaction[];
+  loading?: boolean;
+  seasons?: Array<{ _id: string; Season: string }>;
+  promoters?: Array<{ _id: string; username: string }>;
 }
 
-export function TransactionTable({ transactions, loading, seasons = [], promoters = [] }: TransactionTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [seasonFilter, setSeasonFilter] = useState("all")
-  const [promoterFilter, setPromoterFilter] = useState("all")
-
+export function TransactionTable({
+  transactions,
+  loading,
+  seasons = [],
+  promoters = [],
+}: TransactionTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [seasonFilter, setSeasonFilter] = useState("all");
+  const [promoterFilter, setPromoterFilter] = useState("all");
+console.log(transactions)
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
       transaction.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.to.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.amount.toString().includes(searchTerm) ||
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase())
+      transaction.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter
-    const matchesSeason = seasonFilter === "all" || transaction.seasonId === seasonFilter
-    const matchesPromoter = promoterFilter === "all" || transaction.promoterId === promoterFilter
+    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
+    const matchesSeason =
+      seasonFilter === "all" || transaction.seasonId === seasonFilter;
+    const matchesPromoter =
+      promoterFilter === "all" || transaction.promoterId === promoterFilter;
 
-    return matchesSearch && matchesType && matchesSeason && matchesPromoter
-  })
+    return matchesSearch && matchesType && matchesSeason && matchesPromoter;
+  });
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case "credit":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "debit":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "failed":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -90,7 +121,7 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
           <div key={i} className="h-16 bg-muted animate-pulse rounded" />
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -116,7 +147,7 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
             <SelectItem value="debit">Debit</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={seasonFilter} onValueChange={setSeasonFilter}>
+        {/* <Select value={seasonFilter} onValueChange={setSeasonFilter}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Season" />
           </SelectTrigger>
@@ -128,7 +159,7 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
               </SelectItem>
             ))}
           </SelectContent>
-        </Select>
+        </Select> */}
         <Select value={promoterFilter} onValueChange={setPromoterFilter}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Promoter" />
@@ -157,43 +188,58 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
               <TableHead>Season</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              {/* <TableHead className="text-right">Actions</TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredTransactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={9}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No transactions found
                 </TableCell>
               </TableRow>
             ) : (
               filteredTransactions.map((transaction) => (
                 <TableRow key={transaction.id}>
-                  <TableCell className="font-mono text-sm">{transaction.id}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {transaction.id}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {transaction.type === "credit" ? (
-                        <ArrowUpRight className="h-4 w-4 text-green-600" />
+                        <ArrowDownLeft className="h-4 w-4 text-green-600" />
                       ) : (
-                        <ArrowDownLeft className="h-4 w-4 text-red-600" />
+                        <ArrowUpRight className="h-4 w-4 text-red-600" />
                       )}
-                      <Badge variant="secondary" className={getTypeColor(transaction.type)}>
+                      <Badge
+                        variant="secondary"
+                        className={getTypeColor(transaction.type)}
+                      >
                         {transaction.type}
                       </Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">${transaction.amount.toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">
+                    ₹{transaction.amount.toLocaleString()}
+                  </TableCell>
                   <TableCell>{transaction.from}</TableCell>
                   <TableCell>{transaction.to}</TableCell>
                   <TableCell>{transaction.seasonName || "N/A"}</TableCell>
-                  <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={getStatusColor(transaction.status)}>
+                    {new Date(transaction.date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(transaction.status)}
+                    >
                       {transaction.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  {/* <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
@@ -203,11 +249,11 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem>
                           <Eye className="mr-2 h-4 w-4" />
-                          View Details
+                          View Details hj
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               ))
             )}
@@ -218,7 +264,9 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
       {/* Pagination placeholder */}
       {filteredTransactions.length > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Showing {filteredTransactions.length} transactions</p>
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredTransactions.length} transactions
+          </p>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" disabled>
               Previous
@@ -230,5 +278,5 @@ export function TransactionTable({ transactions, loading, seasons = [], promoter
         </div>
       )}
     </div>
-  )
+  );
 }

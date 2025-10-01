@@ -1,67 +1,106 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Search } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Eye, Search } from "lucide-react";
 
 interface Customer {
-  _id: string
-  username: string
-  email: string
-  cardNo?: string
-  status: "pending" | "approved" | "rejected"
-  promoterId?: string
-  promoterName?: string
-  seasonId?: string
-  seasonName?: string
-  createdAt: string
+  _id: string;
+  username: string;
+  email: string;
+  cardNo?: string;
+  status: "pending" | "approved" | "rejected";
+  promoterId?: string;
+  promoterName?: string;
+  seasonId?: string;
+  seasonName?: string;
+  createdAt: string;
 }
 
 interface CustomerTableProps {
-  customers: Customer[]
-  loading?: boolean
-  showActions?: boolean
-  onApprove?: (customer: Customer) => void
-  onReject?: (customer: Customer) => void
+  customers: Customer[];
+  loading?: boolean;
+  showActions?: boolean;
+  onApprove?: (customer: Customer) => void;
+  onReject?: (customer: Customer) => void;
+  handleApprove?: (customer: {
+    customerId: string;
+    promoterId: string;
+    seasonId: string;
+  }) => Promise<any> | void;
 }
 
-export function CustomerTable({ customers, loading, showActions = true, onApprove, onReject }: CustomerTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [promoterFilter, setPromoterFilter] = useState("all")
+export function CustomerTable({
+  customers,
+  loading,
+  showActions = true,
+  onApprove,
+  onReject,
+  handleApprove,
+  fetchNewCustomers,
+}: CustomerTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [promoterFilter, setPromoterFilter] = useState("all");
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const router = useRouter();
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
       customer.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.cardNo && customer.cardNo.toLowerCase().includes(searchTerm.toLowerCase()))
+      (customer.cardNo &&
+        customer.cardNo.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesStatus = statusFilter === "all" || customer.status === statusFilter
-    const matchesPromoter = promoterFilter === "all" || customer.promoterName === promoterFilter
+    const matchesStatus =
+      statusFilter === "all" || customer.status === statusFilter;
+    const matchesPromoter =
+      promoterFilter === "all" || customer.promoterName === promoterFilter;
 
-    return matchesSearch && matchesStatus && matchesPromoter
-  })
+    return matchesSearch && matchesStatus && matchesPromoter;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "rejected":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
-  const uniquePromoters = Array.from(new Set(customers.map((c) => c.promoterName).filter(Boolean)))
+  const uniquePromoters = Array.from(
+    new Set(customers.map((c) => c.promoterName).filter(Boolean))
+  );
 
   if (loading) {
     return (
@@ -75,7 +114,7 @@ export function CustomerTable({ customers, loading, showActions = true, onApprov
           <div key={i} className="h-16 bg-muted animate-pulse rounded" />
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -129,30 +168,51 @@ export function CustomerTable({ customers, loading, showActions = true, onApprov
               <TableHead>Promoter</TableHead>
               <TableHead>Season</TableHead>
               <TableHead>Created</TableHead>
-              {showActions && <TableHead className="text-right">Actions</TableHead>}
+              {showActions && (
+                <TableHead className="text-right">Actions</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={showActions ? 8 : 7}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No customers found
                 </TableCell>
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => (
                 <TableRow key={customer._id}>
-                  <TableCell className="font-medium">{customer.username}</TableCell>
+                  <TableCell className="font-medium">
+                    {customer.username}
+                  </TableCell>
                   <TableCell>{customer.email}</TableCell>
                   <TableCell>{customer.cardNo || "N/A"}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={getStatusColor(customer.status)}>
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(customer.status)}
+                    >
                       {customer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{customer.promoterName || "Unassigned"}</TableCell>
-                  <TableCell>{customer.seasonName || "N/A"}</TableCell>
-                  <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+                  {/* <TableCell>{customer.promoter.username || "Unassigned"}</TableCell>
+                  <TableCell>{customer.seasons.season || "N/A"}</TableCell> */}
+                  <TableCell>
+                    {customer.promoter.username || "Unassigned"}
+                  </TableCell>
+                  <TableCell>
+                    {customer.seasons && customer.seasons.length > 0
+                      ? customer.seasons.map((s: any) => s.season).join(", ")
+                      : "N/A"}
+                  </TableCell>
+
+                  <TableCell>
+                    {new Date(customer.createdAt).toLocaleDateString()}
+                  </TableCell>
                   {showActions && (
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -168,14 +228,56 @@ export function CustomerTable({ customers, loading, showActions = true, onApprov
                               View Details
                             </Link>
                           </DropdownMenuItem>
-                          {customer.status === "pending" && onApprove && (
-                            <DropdownMenuItem onClick={() => onApprove(customer)}>
+                          {/* {customer.status === "pending" && handleApprove && (
+                            <DropdownMenuItem
+                              disabled={approvingId === customer._id}
+                              onClick={async () => {
+                                if (!handleApprove || approvingId) return;
+                                setApprovingId(customer._id);
+                                try {
+                                  await handleApprove({
+                                    customerId: customer._id.toString(),
+                                    promoterId: customer.promoter?.toString() || "",
+                                    seasonId: customer.seasons[0]?.toString() || "",
+                                  });
+                                } finally {
+                                  setApprovingId(null);
+                                  // refresh data (e.g., /new-customer)
+                                  router.refresh();
+                                }
+                              }}
+                            >
                               <Eye className="mr-2 h-4 w-4" />
                               Approve
                             </DropdownMenuItem>
+                          )} */}
+                          {customer.status === "pending" && handleApprove && (
+                            <DropdownMenuItem
+                              disabled={approvingId === customer._id} // disable while approving
+                              onClick={async () => {
+                                if (!handleApprove || approvingId) return; // prevent double clicks
+                                setApprovingId(customer._id);
+                                try {
+                                  await handleApprove(customer);
+                                } finally {
+                                  setApprovingId(null);
+                                  fetchNewCustomers(); // refresh after API completes
+                                  // router.refresh(); // refresh after API completes
+                                }
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              {approvingId === customer._id
+                                ? "Approving..."
+                                : "Approve"}
+                            </DropdownMenuItem>
                           )}
+
                           {customer.status === "pending" && onReject && (
-                            <DropdownMenuItem className="text-destructive" onClick={() => onReject(customer)}>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => onReject(customer)}
+                            >
                               <Eye className="mr-2 h-4 w-4" />
                               Reject
                             </DropdownMenuItem>
@@ -194,7 +296,9 @@ export function CustomerTable({ customers, loading, showActions = true, onApprov
       {/* Pagination placeholder */}
       {filteredCustomers.length > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Showing {filteredCustomers.length} customers</p>
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredCustomers.length} customers
+          </p>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" disabled>
               Previous
@@ -206,5 +310,5 @@ export function CustomerTable({ customers, loading, showActions = true, onApprov
         </div>
       )}
     </div>
-  )
+  );
 }

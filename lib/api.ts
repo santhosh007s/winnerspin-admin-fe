@@ -1,25 +1,33 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin"
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
 
-export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem("adminToken")
+export const apiRequest = async (
+  endpoint: string,
+  options: RequestInit = {}
+) => {
+  const token = localStorage.getItem("adminToken");
 
   const config: RequestInit = {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token && { token }),
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(token && { token }), // send as "token" header as well
       ...options.headers,
     },
-  }
+  };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`)
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: response.statusText }));
+    throw new Error(errorData.message || `API Error: ${response.statusText}`);
   }
 
-  return response.json()
-}
+  return response.json();
+};
 
 // Dashboard API functions
 export const dashboardAPI = {
@@ -29,65 +37,218 @@ export const dashboardAPI = {
   getAllWithdrawals: () => apiRequest("/all-withdrawal"),
   getTransactions: () => apiRequest("/transactions"),
   getSeasonEarnings: () => apiRequest("/season-earnings"),
-}
+};
 
-// Promoter API functions
 export const promoterAPI = {
-  getAll: () => apiRequest("/all-promoters"),
-  create: (data: any) => apiRequest("/create-promoter", { method: "POST", body: JSON.stringify(data) }),
-  delete: (promoterId: string) =>
-    apiRequest("/delete-promoter", { method: "DELETE", body: JSON.stringify({ promoterId }) }),
-  getById: (id: string) => apiRequest(`/promoter/${id}`),
-  update: (id: string, data: any) => apiRequest(`/promoter/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-}
+  // Get all promoters for a season
+  getAll: (seasonId: string) =>
+    apiRequest(`/all-promoters?seasonId=${encodeURIComponent(seasonId)}`),
 
-// Season API functions
+  // Create a new promoter
+  create: (data: unknown) =>
+    apiRequest("/create-promoter", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Toggle promoter active status
+  toggleStatus: (promoterId: string, isActive: boolean) =>
+    apiRequest("/toggle-promoter", {
+      method: "POST",
+      body: JSON.stringify({ promoterId, isActive }),
+    }),
+
+  // Get a single promoter by ID, optionally for a season
+  getById: (id: string, params?: { seasonId?: string }) => {
+    const query = params?.seasonId
+      ? `?seasonId=${encodeURIComponent(params.seasonId)}`
+      : "";
+    return apiRequest(`/get-promoter/${id}${query}`);
+  },
+
+  // Update promoter profile: fields + status + isActive + season
+  updateProfile: (
+    id: string,
+    data: Partial<{
+      userid: string;
+      username: string;
+      email: string;
+      mobNo: string;
+      status?: "approved" | "unapproved";
+      isActive?: boolean;
+      selectedSeason?: string;
+    }>
+  ) =>
+    apiRequest("/update-promoter-profile", {
+      method: "POST",
+      body: JSON.stringify({ promoterId: id, ...data }),
+    }),
+};
+
 export const seasonAPI = {
-  getAll: () => apiRequest("/seasons"),
-  create: (data: any) => apiRequest("/create-season", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: any) =>
-    apiRequest("/update-season", { method: "PUT", body: JSON.stringify({ ...data, seasonId: id }) }),
+  getAll: () => apiRequest("/all-seasons"),
+  create: (data: unknown) =>
+    apiRequest("/create-season", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: unknown) =>
+    apiRequest("/update-season", {
+      method: "POST",
+      body: JSON.stringify({
+        ...(typeof data === "object" && data !== null ? data : {}),
+        seasonId: id,
+      }),
+    }),
   getById: (id: string) => apiRequest(`/season/${id}`),
-  delete: (id: string) => apiRequest(`/season/${id}`, { method: "DELETE" }),
-}
+  delete: (id: string) =>
+    apiRequest(`/season/${id}/delete`, {
+      method: "POST",
+      body: JSON.stringify({ seasonId: id }), // optional, can be used on server
+    }),
+  getPreviousPromoters: () => apiRequest("/prev-promoters"),
+};
 
+function getSeasonId(): string | null {
+  const season = localStorage.getItem("selectedSeason");
+  return season;
+}
 // Customer API functions
 export const customerAPI = {
-  getAll: () => apiRequest("/customers"),
-  getNew: () => apiRequest("/new-customers"),
-  approve: (data: { customerId: string; promoterId: string; seasonId: string }) =>
-    apiRequest("/approve-customer", { method: "POST", body: JSON.stringify(data) }),
+  getAll: () => {
+    const seasonId = getSeasonId();
+    return apiRequest(`/all-customers${seasonId ? `?seasonId=${seasonId}` : ""}`);
+  },
+  getNew: () => {
+    const seasonId = getSeasonId();
+    return apiRequest(`/new-customers${seasonId ? `?seasonId=${seasonId}` : ""}`);
+  },
+  approve: ({
+    customerId,
+    promoterId,
+    seasonId,
+  }: {
+    customerId: string;
+    promoterId: string;
+    seasonId: string;
+  }) =>
+    apiRequest(`/approve-customer`, {
+      method: "POST",
+      body: JSON.stringify({ customerId, promoterId, seasonId }),
+    }),
   reject: (customerId: string) =>
-    apiRequest("/reject-customer", { method: "POST", body: JSON.stringify({ customerId }) }),
+    apiRequest("/reject-customer", {
+      method: "POST",
+      body: JSON.stringify({ customerId }),
+    }),
   getById: (id: string) => apiRequest(`/customer/${id}`),
-  search: (query: string) => apiRequest(`/customers/search?q=${encodeURIComponent(query)}`),
-}
+  search: (query: string) =>
+    apiRequest(`/customers/search?q=${encodeURIComponent(query)}`),
+};
 
 // Withdrawal API functions
 export const withdrawalAPI = {
-  getAll: () => apiRequest("/all-withdrawal"),
-  update: (withdrawId: string, status: "approved" | "rejected") =>
-    apiRequest("/update-withdrawal", { method: "PUT", body: JSON.stringify({ withdrawId, check: status }) }),
+  getAll: (season?: string) =>
+    apiRequest(`/all-withdrawal${season ? `?seasonId=${season}` : ""}`),
+  update: (withdrawId: string, status: "approved" | "rejected" | "pending") =>
+    apiRequest("/update-withdrawal", {
+      method: "POST",
+      body: JSON.stringify({ withdrawId, check: status }),
+    }),
   getById: (id: string) => apiRequest(`/withdrawal/${id}`),
-}
+};
 
-// Transaction API functions
+// Activities API functions
+export const activitiesAPI = {
+  getAll: () => apiRequest("/activities"),
+};
+//transactionAPI api function
 export const transactionAPI = {
-  getAll: () => apiRequest("/transactions"),
+  getAll: () => {
+    const selectedSeasonId = localStorage.getItem("selectedSeason");
+    return apiRequest(
+      `/all-transactions${
+        selectedSeasonId ? `?seasonId=${selectedSeasonId}` : ""
+      }`
+    );
+  },
+
   getByFilter: (filters: {
-    seasonId?: string
-    promoterId?: string
-    customerId?: string
-    type?: "credit" | "debit"
-    startDate?: string
-    endDate?: string
+    seasonId?: string;
+    promoterId?: string;
+    customerId?: string;
+    type?: "credit" | "debit";
+    startDate?: string;
+    endDate?: string;
   }) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value)
-    })
-    return apiRequest(`/transactions?${params.toString()}`)
+      if (value) params.append(key, String(value));
+    });
+    return apiRequest(`/transactions?${params.toString()}`);
   },
   getEarningsSummary: () => apiRequest("/earnings-summary"),
   getById: (id: string) => apiRequest(`/transaction/${id}`),
-}
+};
+
+// Admin API functions
+export const adminAPI = {
+  login: (username: string, password: string) =>
+    apiRequest("/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  getWallet: () => apiRequest("/admin-wallet"),
+};
+
+export const posterAPI = {
+  upload: async (file: File, audience: "promoter" | "customer") => {
+    const formData = new FormData();
+    formData.append("poster", file);
+    formData.append("audience", audience);
+
+    // Get selected season from localStorage
+    const selectedSeason = localStorage.getItem("selectedSeason");
+    if (selectedSeason) {
+      formData.append("season", selectedSeason); // send season ID
+    }
+
+    const token = localStorage.getItem("adminToken");
+
+    const res = await fetch(`${API_BASE_URL}/upload-poster`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(token && { token }),
+        // Don't set 'Content-Type', browser handles multipart automatically
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res
+        .json()
+        .catch(() => ({ message: res.statusText }));
+      throw new Error(errorData.message || `Upload Error: ${res.statusText}`);
+    }
+
+    return res.json();
+  },
+};
+
+export const repaymentAPI = {
+  getAll: (seasonId: string | null) =>
+    apiRequest(`/all-repayments${seasonId ? `?season=${seasonId}` : ""}`),
+
+  approve: (installmentId: string, promoterId: string) =>
+    apiRequest(`/approve-repayment`, {
+      method: "POST",
+      body: JSON.stringify({ installmentId, promoterId }),
+    }),
+};
+
+export const adminStatsAPI = {
+  // Get totalPromoters, totalCustomers, totalAmount for selected season
+  getAdminStats: (seasonId: string) =>
+    apiRequest(`/admin-stats${seasonId ? `?seasonId=${seasonId}` : ""}`),
+};

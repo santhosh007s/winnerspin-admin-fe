@@ -1,138 +1,150 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { StatsCards } from "@/components/stats-cards"
-import { EarningsChart } from "@/components/earnings-chart"
-import { PromoterEarningsChart } from "@/components/promoter-earnings-chart"
-import { RecentActivity } from "@/components/recent-activity"
-import { QuickActions } from "@/components/quick-actions"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react";
+import { StatsCards } from "@/components/stats-cards";
+import { RecentActivity } from "@/components/recent-activity";
+import { QuickActions } from "@/components/quick-actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { dashboardAPI, seasonAPI, customerAPI, withdrawalAPI, adminStatsAPI } from "@/lib/api";
 
-// Mock data for demonstration
-const mockStats = {
-  totalPromoters: 45,
-  totalCustomers: 1250,
-  pendingApprovals: 12,
-  pendingWithdrawals: 8,
-}
-
-const mockEarningsData = [
-  { season: "Summer 2024", earnings: 15000, month: "Jun" },
-  { season: "Summer 2024", earnings: 18000, month: "Jul" },
-  { season: "Summer 2024", earnings: 22000, month: "Aug" },
-  { season: "Fall 2024", earnings: 16000, month: "Sep" },
-  { season: "Fall 2024", earnings: 19000, month: "Oct" },
-  { season: "Fall 2024", earnings: 25000, month: "Nov" },
-]
-
-const mockPromoterData = [
-  { promoter: "John D.", earnings: 5200, customers: 15 },
-  { promoter: "Sarah M.", earnings: 4800, customers: 12 },
-  { promoter: "Mike R.", earnings: 4200, customers: 10 },
-  { promoter: "Lisa K.", earnings: 3900, customers: 9 },
-  { promoter: "Tom B.", earnings: 3500, customers: 8 },
-]
-
-const mockActivities = [
-  {
-    id: "1",
-    type: "customer_approval" as const,
-    description: "New customer approval request from promoter John D.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    status: "pending" as const,
-  },
-  {
-    id: "2",
-    type: "withdrawal_request" as const,
-    description: "Withdrawal request of $500 from Sarah M.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    status: "approved" as const,
-  },
-  {
-    id: "3",
-    type: "promoter_signup" as const,
-    description: "New promoter registration: Alex Johnson",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-    status: "approved" as const,
-  },
-  {
-    id: "4",
-    type: "season_created" as const,
-    description: "Winter 2025 season created with 25 approved promoters",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-]
+const SEASON_STORAGE_KEY = "selectedSeason";
 
 export default function DashboardPage() {
-  const [selectedSeason, setSelectedSeason] = useState("all")
-  const [loading, setLoading] = useState(false)
-  const [stats, setStats] = useState(mockStats)
-  const [earningsData, setEarningsData] = useState(mockEarningsData)
-  const [promoterData, setPromoterData] = useState(mockPromoterData)
-  const [activities, setActivities] = useState(mockActivities)
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<any>({
+    totalPromoters: 0,
+    totalCustomers: 0,
+    netAmount: 0,
+  });
+  const [activities, setActivities] = useState<any[]>([]);
+  const [seasons, setSeasons] = useState<any[]>([]);
+  const [seasonsLoading, setSeasonsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true)
+    const saved = localStorage.getItem(SEASON_STORAGE_KEY);
+    if (saved) setSelectedSeason(saved);
+  }, []);
+
+  useEffect(() => {
+    const fetchSeasons = async () => {
+      setSeasonsLoading(true);
       try {
-        // In a real implementation, these would fetch from actual APIs
-        // const [statsRes, earningsRes, promotersRes] = await Promise.all([
-        //   dashboardAPI.getStats(),
-        //   dashboardAPI.getSeasonEarnings(),
-        //   dashboardAPI.getAllPromoters(),
-        // ])
+        const data = await seasonAPI.getAll();
+        const allSeasons = data?.seasons ?? [];
+        setSeasons(allSeasons);
 
-        // For now, using mock data with a delay to simulate API calls
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // setStats(statsRes)
-        // setEarningsData(earningsRes.data)
-        // setPromoterData(promotersRes.topPromoters)
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error)
+        if (!selectedSeason && data?.curSeason?._id) {
+          setSelectedSeason(data.curSeason._id);
+        }
+      } catch (err) {
+        console.error("Error fetching seasons:", err);
       } finally {
-        setLoading(false)
+        setSeasonsLoading(false);
       }
-    }
+    };
 
-    fetchDashboardData()
-  }, [selectedSeason])
+    fetchSeasons();
+  }, [selectedSeason]);
+
+  useEffect(() => {
+    if (!selectedSeason) return;
+
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        // ✅ Fetch all 3 stats from backend
+        const statsRes = await adminStatsAPI.getAdminStats(selectedSeason);
+        setStats({
+          totalPromoters: statsRes.totalPromoters ?? 0,
+          totalCustomers: statsRes.totalCustomers ?? 0,
+          netAmount: statsRes.totalAmount ?? 0,
+        });
+
+        // Optional: fetch recent activities
+        const [customers, withdrawals] = await Promise.all([
+          customerAPI.getNew(),
+          withdrawalAPI.getAll(selectedSeason),
+        ]);
+
+        const activityList: any[] = [];
+
+        customers?.forEach((c) => {
+          activityList.push({
+            id: c._id,
+            type: "customer_approval",
+            description: `New customer request from ${c.username}`,
+            timestamp: c.createdAt,
+            status: c.status,
+          });
+        });
+
+        withdrawals?.forEach((w) => {
+          activityList.push({
+            id: w._id,
+            type: "withdrawal_request",
+            description: `Withdrawal request of ₹${w.amount} by ${w.customer?.username}`,
+            timestamp: w.createdAt,
+            status: w.status,
+          });
+        });
+
+        setActivities(
+          activityList.sort(
+            (a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)
+          )
+        );
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [selectedSeason]);
+
+  const handleSeasonChange = (seasonId: string) => {
+    setSelectedSeason(seasonId);
+    localStorage.setItem(SEASON_STORAGE_KEY, seasonId);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your MLM system performance</p>
+          <p className="text-muted-foreground">Overview of the system</p>
         </div>
-        <Select value={selectedSeason} onValueChange={setSelectedSeason}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select season" />
+
+        <Select value={selectedSeason ?? ""} onValueChange={handleSeasonChange}>
+          <SelectTrigger className="w-[240px]" disabled={seasonsLoading}>
+            <SelectValue
+              placeholder={seasonsLoading ? "Loading..." : "Select season"}
+            />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Seasons</SelectItem>
-            <SelectItem value="winter2025">Winter 2025</SelectItem>
-            <SelectItem value="fall2024">Fall 2024</SelectItem>
-            <SelectItem value="summer2024">Summer 2024</SelectItem>
+            {seasons.map((s) => (
+              <SelectItem key={s._id} value={s._id}>
+                {s.season}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Stats Cards */}
       <StatsCards stats={stats} loading={loading} />
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <EarningsChart data={earningsData} loading={loading} />
-        <PromoterEarningsChart data={promoterData} loading={loading} />
-      </div>
-
-      {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivity activities={activities} loading={loading} />
         <QuickActions />
       </div>
     </div>
-  )
+  );
 }

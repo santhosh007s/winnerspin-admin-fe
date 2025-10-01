@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useDispatch, useSelector } from "react-redux"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
 import {
   LayoutDashboard,
   Users,
@@ -11,36 +11,37 @@ import {
   UserCheck,
   CreditCard,
   ArrowUpDown,
-  BarChart3,
   LogOut,
   Menu,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
-import { logout } from "@/store/authSlice"
-import type { RootState } from "@/store/store"
+  Banknote,
+  File,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { logout } from "@/store/authSlice";
+import type { RootState } from "@/store/store";
 
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Promoters", href: "/admin/promoters", icon: Users },
   { name: "Seasons", href: "/admin/seasons", icon: Calendar },
   { name: "Customers", href: "/admin/customers", icon: UserCheck },
-  { name: "Requests", href: "/admin/requests", icon: UserCheck },
   { name: "Withdrawals", href: "/admin/withdrawals", icon: CreditCard },
   { name: "Transactions", href: "/admin/transactions", icon: ArrowUpDown },
-  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-]
+  { name: "Poster-upload", href: "/admin/upload-poster", icon: File },
+  { name: "Repayments", href: "/admin/repayments", icon: Banknote },
+];
 
 export function AdminSidebar() {
-  const pathname = usePathname()
-  const dispatch = useDispatch()
-  const { username } = useSelector((state: RootState) => state.auth)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname();
+  const dispatch = useDispatch();
+  const { username } = useSelector((state: RootState) => state.auth);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
-    dispatch(logout())
-  }
+    dispatch(logout());
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -51,7 +52,7 @@ export function AdminSidebar() {
 
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map((item) => {
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href;
           return (
             <Link
               key={item.name}
@@ -60,14 +61,14 @@ export function AdminSidebar() {
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
               onClick={() => setMobileOpen(false)}
             >
               <item.icon className="h-4 w-4" />
               {item.name}
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -82,7 +83,7 @@ export function AdminSidebar() {
         </Button>
       </div>
     </div>
-  )
+  );
 
   return (
     <>
@@ -94,7 +95,11 @@ export function AdminSidebar() {
       {/* Mobile Sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden fixed top-4 left-4 z-50">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden fixed top-4 left-4 z-50"
+          >
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
@@ -103,5 +108,5 @@ export function AdminSidebar() {
         </SheetContent>
       </Sheet>
     </>
-  )
+  );
 }

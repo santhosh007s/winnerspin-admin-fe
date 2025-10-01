@@ -1,12 +1,30 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,70 +34,80 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { MoreHorizontal, Eye, Check, X, Search } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { MoreHorizontal, Eye, Check, X, Search } from "lucide-react";
 
 interface Withdrawal {
-  _id: string
-  promoterId: string
-  promoterName?: string
-  promoterUsername?: string
-  amount: number
-  status: "pending" | "approved" | "rejected"
-  requestDate: string
-  processedDate?: string
-  notes?: string
+  _id: string;
+  promoterId: string;
+  promoterName?: string;
+  promoterUsername?: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  requestDate: string;
+  processedDate?: string;
+  notes?: string;
 }
 
 interface WithdrawalTableProps {
-  withdrawals: Withdrawal[]
-  loading?: boolean
-  onApprove: (withdrawalId: string) => void
-  onReject: (withdrawalId: string) => void
+  withdrawals: Withdrawal[];
+  loading?: boolean;
+  onApprove: (withdrawalId: string) => void;
+  onReject: (withdrawalId: string) => void;
 }
 
-export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: WithdrawalTableProps) {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+export function WithdrawalTable({
+  withdrawals,
+  loading,
+  onApprove,
+  onReject,
+}: WithdrawalTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [actionWithdrawal, setActionWithdrawal] = useState<{
-    withdrawal: Withdrawal
-    action: "approve" | "reject"
-  } | null>(null)
+    withdrawal: Withdrawal;
+    action: "approve" | "reject";
+  } | null>(null);
 
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const matchesSearch =
-      withdrawal.promoterUsername?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      withdrawal.promoterName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      withdrawal.amount.toString().includes(searchTerm)
+      withdrawal.promoterUsername
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      withdrawal.promoterName
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      withdrawal.amount.toString().includes(searchTerm);
 
-    const matchesStatus = statusFilter === "all" || withdrawal.status === statusFilter
+    const matchesStatus =
+      statusFilter === "all" || withdrawal.status === statusFilter;
 
-    return matchesSearch && matchesStatus
-  })
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "rejected":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const handleAction = () => {
-    if (!actionWithdrawal) return
+    if (!actionWithdrawal) return;
 
     if (actionWithdrawal.action === "approve") {
-      onApprove(actionWithdrawal.withdrawal._id)
+      onApprove(actionWithdrawal.withdrawal._id);
     } else {
-      onReject(actionWithdrawal.withdrawal._id)
+      onReject(actionWithdrawal.withdrawal._id);
     }
-    setActionWithdrawal(null)
-  }
+    setActionWithdrawal(null);
+  };
 
   if (loading) {
     return (
@@ -92,7 +120,7 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
           <div key={i} className="h-16 bg-muted animate-pulse rounded" />
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -137,7 +165,10 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
           <TableBody>
             {filteredWithdrawals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No withdrawals found
                 </TableCell>
               </TableRow>
@@ -146,21 +177,32 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
                 <TableRow key={withdrawal._id}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{withdrawal.promoterUsername || "Unknown"}</p>
+                      <p className="font-medium">
+                        {withdrawal.requester.username || "Unknown"}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        {withdrawal.promoterName || withdrawal.promoterId}
+                        {withdrawal.requester.userid || withdrawal.promoterId}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">${withdrawal.amount.toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">
+                    ₹{withdrawal.amount.toLocaleString()}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className={getStatusColor(withdrawal.status)}>
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(withdrawal.status)}
+                    >
                       {withdrawal.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(withdrawal.requestDate).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {withdrawal.processedDate ? new Date(withdrawal.processedDate).toLocaleDateString() : "N/A"}
+                    {new Date(withdrawal.requestDate).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    {withdrawal.processedDate
+                      ? new Date(withdrawal.processedDate).toLocaleDateString()
+                      : "N/A"}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -178,14 +220,24 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
                           <>
                             <DropdownMenuItem
                               className="text-green-600"
-                              onClick={() => setActionWithdrawal({ withdrawal, action: "approve" })}
+                              onClick={() =>
+                                setActionWithdrawal({
+                                  withdrawal,
+                                  action: "approve",
+                                })
+                              }
                             >
                               <Check className="mr-2 h-4 w-4" />
                               Approve
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => setActionWithdrawal({ withdrawal, action: "reject" })}
+                              onClick={() =>
+                                setActionWithdrawal({
+                                  withdrawal,
+                                  action: "reject",
+                                })
+                              }
                             >
                               <X className="mr-2 h-4 w-4" />
                               Reject
@@ -205,7 +257,9 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
       {/* Pagination placeholder */}
       {filteredWithdrawals.length > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">Showing {filteredWithdrawals.length} withdrawals</p>
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredWithdrawals.length} withdrawals
+          </p>
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" disabled>
               Previous
@@ -218,17 +272,23 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
       )}
 
       {/* Action Confirmation Dialog */}
-      <AlertDialog open={!!actionWithdrawal} onOpenChange={() => setActionWithdrawal(null)}>
+      <AlertDialog
+        open={!!actionWithdrawal}
+        onOpenChange={() => setActionWithdrawal(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {actionWithdrawal?.action === "approve" ? "Approve Withdrawal" : "Reject Withdrawal"}
+              {actionWithdrawal?.action === "approve"
+                ? "Approve Withdrawal"
+                : "Reject Withdrawal"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {actionWithdrawal?.action} the withdrawal request of $
-              {actionWithdrawal?.withdrawal.amount.toLocaleString()} from{" "}
-              {actionWithdrawal?.withdrawal.promoterUsername}?
-              {actionWithdrawal?.action === "approve" && " This will process the payment to the promoter."}
+              Are you sure you want to {actionWithdrawal?.action} the withdrawal
+              request of ${actionWithdrawal?.withdrawal.amount.toLocaleString()}{" "}
+              from {actionWithdrawal?.withdrawal.promoterUsername}?
+              {actionWithdrawal?.action === "approve" &&
+                " This will process the payment to the promoter."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -247,5 +307,5 @@ export function WithdrawalTable({ withdrawals, loading, onApprove, onReject }: W
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

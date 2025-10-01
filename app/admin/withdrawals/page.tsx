@@ -1,93 +1,129 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { WithdrawalTable } from "@/components/withdrawal-table"
-import { WithdrawalStats } from "@/components/withdrawal-stats"
-import { RecentWithdrawals } from "@/components/recent-withdrawals"
-import { withdrawalAPI, promoterAPI } from "@/lib/api"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WithdrawalTable } from "@/components/withdrawal-table";
+import { WithdrawalStats } from "@/components/withdrawal-stats";
+import { RecentWithdrawals } from "@/components/recent-withdrawals";
+import { withdrawalAPI, promoterAPI } from "@/lib/api";
 
 interface Withdrawal {
-  _id: string
-  promoterId: string
-  promoterName?: string
-  promoterUsername?: string
-  amount: number
-  status: "pending" | "approved" | "rejected"
-  requestDate: string
-  processedDate?: string
-  notes?: string
+  _id: string;
+  promoterId: string;
+  promoterName?: string;
+  promoterUsername?: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  requestDate: string;
+  processedDate?: string;
+  notes?: string;
 }
 
 export default function WithdrawalsPage() {
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchWithdrawals()
-  }, [])
+    fetchWithdrawals();
+  }, []);
+  const season = localStorage.getItem("selectedSeason");
 
   const fetchWithdrawals = async () => {
     try {
-      setLoading(true)
-      const [withdrawalsRes, promotersRes] = await Promise.all([withdrawalAPI.getAll(), promoterAPI.getAll()])
+      setLoading(true);
+      const [withdrawalsRes, promotersRes] = await Promise.all([
+        withdrawalAPI.getAll(season),
+        promoterAPI.getAll(season),
+      ]);
 
       // Enrich withdrawals with promoter information
-      const enrichedWithdrawals = (withdrawalsRes.withdraw || []).map((withdrawal: any) => {
-        const promoter = promotersRes.allPromoters?.find((p: any) => p._id === withdrawal.promoterId)
-        return {
-          ...withdrawal,
-          promoterName: promoter?.username || "Unknown",
-          promoterUsername: promoter?.username || "Unknown",
-          requestDate: withdrawal.createdAt || new Date().toISOString(),
+      const enrichedWithdrawals = (withdrawalsRes.withdraw || []).map(
+        (withdrawal: any) => {
+          const promoter = promotersRes.allPromoters?.find(
+            (p: any) => p._id === withdrawal.promoterId
+          );
+          return {
+            ...withdrawal,
+            promoterName: promoter?.username || "Unknown",
+            promoterUsername: promoter?.username || "Unknown",
+            requestDate: withdrawal.createdAt || new Date().toISOString(),
+          };
         }
-      })
+      );
 
-      setWithdrawals(enrichedWithdrawals)
+      setWithdrawals(enrichedWithdrawals);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch withdrawals")
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch withdrawals"
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleApprove = async (withdrawalId: string) => {
     try {
-      await withdrawalAPI.update(withdrawalId, "approved")
+      await withdrawalAPI.update(withdrawalId, "approved");
       setWithdrawals((prev) =>
         prev.map((w) =>
-          w._id === withdrawalId ? { ...w, status: "approved" as const, processedDate: new Date().toISOString() } : w,
-        ),
-      )
+          w._id === withdrawalId
+            ? {
+                ...w,
+                status: "approved" as const,
+                processedDate: new Date().toISOString(),
+              }
+            : w
+        )
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve withdrawal")
+      setError(
+        err instanceof Error ? err.message : "Failed to approve withdrawal"
+      );
     }
-  }
+  };
 
   const handleReject = async (withdrawalId: string) => {
     try {
-      await withdrawalAPI.update(withdrawalId, "rejected")
+      await withdrawalAPI.update(withdrawalId, "rejected");
       setWithdrawals((prev) =>
         prev.map((w) =>
-          w._id === withdrawalId ? { ...w, status: "rejected" as const, processedDate: new Date().toISOString() } : w,
-        ),
-      )
+          w._id === withdrawalId
+            ? {
+                ...w,
+                status: "rejected" as const,
+                processedDate: new Date().toISOString(),
+              }
+            : w
+        )
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reject withdrawal")
+      setError(
+        err instanceof Error ? err.message : "Failed to reject withdrawal"
+      );
     }
-  }
+  };
 
-  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending")
-  const processedWithdrawals = withdrawals.filter((w) => w.status !== "pending")
+  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending");
+  const processedWithdrawals = withdrawals.filter(
+    (w) => w.status !== "pending"
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Withdrawals</h1>
-        <p className="text-muted-foreground">Manage promoter withdrawal requests and payment processing</p>
+        <p className="text-muted-foreground">
+          Manage promoter withdrawal requests and payment processing
+        </p>
       </div>
 
       {/* Stats */}
@@ -99,16 +135,35 @@ export default function WithdrawalsPage() {
         <div className="lg:col-span-2">
           <Tabs defaultValue="pending" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="pending">Pending ({pendingWithdrawals.length})</TabsTrigger>
-              <TabsTrigger value="all">All Withdrawals ({withdrawals.length})</TabsTrigger>
-              <TabsTrigger value="processed">Processed ({processedWithdrawals.length})</TabsTrigger>
+              <TabsTrigger
+                value="all"
+                className="data-[state=active]:bg-blue-300"
+              >
+                All Withdrawals ({withdrawals.length})
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="pending"
+                className="data-[state=active]:bg-red-300"
+              >
+                Pending Withdrawals({pendingWithdrawals.length})
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="processed"
+                className="data-[state=active]:bg-green-300"
+              >
+                Processed Withdrawals ({processedWithdrawals.length})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="pending">
               <Card>
                 <CardHeader>
                   <CardTitle>Pending Withdrawals</CardTitle>
-                  <CardDescription>Withdrawal requests awaiting approval</CardDescription>
+                  <CardDescription>
+                    Withdrawal requests awaiting approval
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <WithdrawalTable
@@ -142,7 +197,9 @@ export default function WithdrawalsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Processed Withdrawals</CardTitle>
-                  <CardDescription>Approved and rejected withdrawal requests</CardDescription>
+                  <CardDescription>
+                    Approved and rejected withdrawal requests
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <WithdrawalTable
@@ -168,7 +225,11 @@ export default function WithdrawalsPage() {
         </div>
       </div>
 
-      {error && <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg">{error}</div>}
+      {error && (
+        <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
     </div>
-  )
+  );
 }

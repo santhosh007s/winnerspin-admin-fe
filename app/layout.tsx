@@ -6,8 +6,8 @@ import "./globals.css";
 import { ReduxProvider } from "@/components/redux-provider";
 
 export const metadata: Metadata = {
-  title: "MLM Admin Panel",
-  description: "Admin interface for MLM promoter-customer system",
+  title: "Winnerspin Admin Panel",
+  description: "Admin Panel for promoter-customer system",
   generator: "v0.app",
 };
 
