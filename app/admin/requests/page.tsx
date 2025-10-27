@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // ✅ correct import
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,6 +15,7 @@ import { RejectionDialog } from "@/components/rejection-dialog";
 import { customerAPI } from "@/lib/api";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Loader from "@/components/loader"; // ✅ your global loader
 
 interface Customer {
   _id: string;
@@ -30,7 +31,7 @@ interface Customer {
 }
 
 export default function RequestsPage() {
-  const router = useRouter(); // ✅ initialize router
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,36 +60,21 @@ export default function RequestsPage() {
     }
   };
 
-  // const handleApprove = async (
-  //   customerId: string,
-  //   promoterId: string,
-  //   seasonId: string
-  // ) => {
-  //   try {
-  //     await customerAPI.approve({ customerId, promoterId, seasonId });
-  //     setCustomers((prev) => prev.filter((c) => c._id !== customerId));
-  //     setApprovalCustomer(null);
-  //   } catch (err) {
-  //     setError(
-  //       err instanceof Error ? err.message : "Failed to approve customer"
-  //     );
-  //   }
-  // };
-const handleApprove = async (customer: {
-  _id: string;
-  promoter: string;
-  seasons: string[];
-}) => {
-  const customerId = customer._id.toString();
-  const promoterId = customer.promoter?.toString() || "";
-  const seasonId = customer.seasons[0]?.toString() || "";
+  const handleApprove = async (customer: {
+    _id: string;
+    promoter: string;
+    seasons: string[];
+  }) => {
+    const customerId = customer._id.toString();
+    const promoterId = customer.promoter?.toString() || "";
+    const seasonId = customer.seasons[0]?.toString() || "";
 
-  console.log("Customer ID:", customerId);
-  console.log("Promoter ID:", promoterId);
-  console.log("Season ID:", seasonId);
+    console.log("Customer ID:", customerId);
+    console.log("Promoter ID:", promoterId);
+    console.log("Season ID:", seasonId);
 
-  await customerAPI.approve({ customerId, promoterId, seasonId });
-};
+    await customerAPI.approve({ customerId, promoterId, seasonId });
+  };
 
   const handleReject = async (customerId: string) => {
     try {
@@ -104,16 +90,15 @@ const handleApprove = async (customer: {
 
   const stats = {
     pending: customers.length,
-    processed: 0, // Placeholder; you can calculate or fetch this if needed
+    processed: 0,
   };
 
   return (
-    <div className="space-y-6 p-4">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => router.back()} // ✅ no need to pass a path, works like browser back
-      >
+    <div className="space-y-6 p-4 relative">
+      {/* ✅ Global loader overlay */}
+      <Loader show={loading} />
+
+      <Button type="button" variant="outline" onClick={() => router.back()}>
         Back
       </Button>
 
@@ -127,7 +112,7 @@ const handleApprove = async (customer: {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex justify-between items-center space-y-0 pb-2">
@@ -142,6 +127,7 @@ const handleApprove = async (customer: {
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex justify-between items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -155,6 +141,7 @@ const handleApprove = async (customer: {
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader className="flex justify-between items-center space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">

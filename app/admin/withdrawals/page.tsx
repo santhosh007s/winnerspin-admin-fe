@@ -13,6 +13,7 @@ import { WithdrawalTable } from "@/components/withdrawal-table";
 import { WithdrawalStats } from "@/components/withdrawal-stats";
 import { RecentWithdrawals } from "@/components/recent-withdrawals";
 import { withdrawalAPI, promoterAPI } from "@/lib/api";
+import Loader from "@/components/loader"; // ✅ your global loader
 
 interface Withdrawal {
   _id: string;
@@ -34,17 +35,19 @@ export default function WithdrawalsPage() {
   useEffect(() => {
     fetchWithdrawals();
   }, []);
-  const season = localStorage.getItem("selectedSeason");
 
   const fetchWithdrawals = async () => {
     try {
       setLoading(true);
+
+      const season = localStorage.getItem("selectedSeason");
+      if (!season) throw new Error("No season selected in local storage");
+
       const [withdrawalsRes, promotersRes] = await Promise.all([
         withdrawalAPI.getAll(season),
         promoterAPI.getAll(season),
       ]);
 
-      // Enrich withdrawals with promoter information
       const enrichedWithdrawals = (withdrawalsRes.withdraw || []).map(
         (withdrawal: any) => {
           const promoter = promotersRes.allPromoters?.find(
@@ -117,7 +120,10 @@ export default function WithdrawalsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* ✅ Loader Overlay */}
+      <Loader show={loading} />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Withdrawals</h1>
@@ -146,7 +152,7 @@ export default function WithdrawalsPage() {
                 value="pending"
                 className="data-[state=active]:bg-red-300"
               >
-                Pending Withdrawals({pendingWithdrawals.length})
+                Pending Withdrawals ({pendingWithdrawals.length})
               </TabsTrigger>
 
               <TabsTrigger

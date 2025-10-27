@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { posterAPI } from "@/lib/api";
+import Loader from "@/components/loader"; // ✅ your global loader
 
 export default function PosterUploader() {
   const [file, setFile] = useState<File | null>(null);
@@ -32,13 +33,16 @@ export default function PosterUploader() {
   };
 
   return (
-    <div className="w-full h-[80vh] flex flex-col items-center justify-center p-4">
+    <div className="relative w-full h-[80vh] flex flex-col items-center justify-center p-4">
+      {/* ✅ Global Loader */}
+      <Loader show={uploading} />
+
       {/* Page Header */}
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 ">Upload Posters</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Upload Posters</h1>
         <p className="text-gray-600">
-          This poster will be displayed in the promoter pannel / customer pannel
-          / landing page
+          This poster will be displayed in the promoter panel / customer panel /
+          landing page
         </p>
       </div>
 

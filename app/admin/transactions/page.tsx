@@ -14,6 +14,7 @@ import { TransactionStats } from "@/components/transaction-stats";
 import { EarningsSummary } from "@/components/earnings-summary";
 import { RecentTransactions } from "@/components/recent-transactions";
 import { transactionAPI, seasonAPI, promoterAPI } from "@/lib/api";
+import Loader from "@/components/loader"; // ✅ use your global loader
 
 interface Transaction {
   id: string;
@@ -46,7 +47,7 @@ interface ServerCustomer {
 
 interface ServerTransaction {
   _id: string;
-  season: { _id: string; season: string }; // ✅ fixed type
+  season: { _id: string; season: string };
   promoter?: ServerPromoter;
   customer?: ServerCustomer;
   amount: number;
@@ -88,6 +89,7 @@ export default function TransactionsPage() {
     try {
       setLoading(true);
       const season = localStorage.getItem("selectedSeason");
+
       const [transactionRes, seasonsRes, promotersRes] = await Promise.all([
         transactionAPI.getAll(season) as Promise<{
           message?: string;
@@ -103,13 +105,12 @@ export default function TransactionsPage() {
       const serverWithdrawals: ServerWithdrawal[] =
         transactionRes?.withdrawals || [];
 
-      // ✅ Map API transactions -> credits
+      // ✅ Map credits
       const mappedCredits: Transaction[] = serverTransactions.map((tx) => {
         const creditedTo: "admin" | "promoter" =
           tx.to === "admin" ? "admin" : "promoter";
         const from = tx.customer?.username ?? "customer";
         const to = creditedTo === "admin" ? "admin" : "promoter";
-        console.log(tx);
         return {
           id: tx._id,
           type: "credit",
@@ -128,7 +129,7 @@ export default function TransactionsPage() {
         };
       });
 
-      // ✅ Map withdrawals -> debits
+      // ✅ Map debits (withdrawals)
       const mappedDebits: Transaction[] = serverWithdrawals.map((w) => {
         const amountNum =
           typeof w.amount === "string"
@@ -154,7 +155,7 @@ export default function TransactionsPage() {
         };
       });
 
-      // ✅ Combine and sort
+      // ✅ Combine + sort by date
       const combined = [...mappedCredits, ...mappedDebits].sort((a, b) => {
         const da = new Date(a.date).getTime();
         const db = new Date(b.date).getTime();
@@ -163,7 +164,7 @@ export default function TransactionsPage() {
 
       setTransactions(combined);
 
-      // ✅ Normalize seasons & promoters
+      // ✅ Normalize season and promoter data
       const seasonsArray: Season[] = Array.isArray((seasonsRes as any)?.seasons)
         ? (seasonsRes as any).seasons
         : Array.isArray(seasonsRes)
@@ -180,24 +181,6 @@ export default function TransactionsPage() {
         ? (promotersRes as ServerPromoter[])
         : [];
 
-      // combined.forEach((m) => {
-      //   if (m.seasonId) {
-      //     const seasonObj = seasonsArray.find((s) => s._id === m.seasonId);
-      //     if (seasonObj) {
-      //       m.seasonName =
-      //         seasonObj.Season || seasonObj.name || seasonObj.title;
-      //     }
-      //   }
-      //   if (!m.promoterName && m.promoterId) {
-      //     const promoterObj = promotersArray.find(
-      //       (p) => p._id === m.promoterId
-      //     );
-      //     if (promoterObj) {
-      //       m.promoterName = promoterObj.username || promoterObj.userid;
-      //     }
-      //   }
-      // });
-
       setSeasons(seasonsArray);
       setPromoters(promotersArray);
     } catch (err) {
@@ -209,7 +192,7 @@ export default function TransactionsPage() {
     }
   };
 
-  // Counts
+  // ✅ Stats
   const totalCount = transactions.length;
   const creditTransactions = transactions.filter((t) => t.type === "credit");
   const debitTransactions = transactions.filter((t) => t.type === "debit");
@@ -221,7 +204,10 @@ export default function TransactionsPage() {
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* ✅ Loader overlay */}
+      <Loader show={loading} />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
@@ -257,8 +243,7 @@ export default function TransactionsPage() {
                 <CardHeader>
                   <CardTitle>All Transactions</CardTitle>
                   <CardDescription>
-                    Complete transaction history (credits + withdrawals), sorted
-                    by date
+                    Complete transaction history (credits + withdrawals)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -277,7 +262,7 @@ export default function TransactionsPage() {
                 <CardHeader>
                   <CardTitle>Credited to Admin</CardTitle>
                   <CardDescription>
-                    Transactions where funds were credited to admin
+                    Transactions credited to admin
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -298,7 +283,7 @@ export default function TransactionsPage() {
                 <CardHeader>
                   <CardTitle>Credited to Promoter</CardTitle>
                   <CardDescription>
-                    Transactions where funds were credited to promoters
+                    Transactions credited to promoters
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

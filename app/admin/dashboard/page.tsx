@@ -11,13 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { dashboardAPI, seasonAPI, customerAPI, withdrawalAPI, adminStatsAPI } from "@/lib/api";
-
+import {
+  dashboardAPI,
+  seasonAPI,
+  customerAPI,
+  withdrawalAPI,
+  adminStatsAPI,
+} from "@/lib/api";
+import Loader from "@/components/loader"
 const SEASON_STORAGE_KEY = "selectedSeason";
 
 export default function DashboardPage() {
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // 👈 default true (initially loading)
   const [stats, setStats] = useState<any>({
     totalPromoters: 0,
     totalCustomers: 0,
@@ -27,11 +33,13 @@ export default function DashboardPage() {
   const [seasons, setSeasons] = useState<any[]>([]);
   const [seasonsLoading, setSeasonsLoading] = useState(false);
 
+  // 🧠 Load saved season
   useEffect(() => {
     const saved = localStorage.getItem(SEASON_STORAGE_KEY);
     if (saved) setSelectedSeason(saved);
   }, []);
 
+  // 🌀 Fetch all seasons
   useEffect(() => {
     const fetchSeasons = async () => {
       setSeasonsLoading(true);
@@ -42,6 +50,7 @@ export default function DashboardPage() {
 
         if (!selectedSeason && data?.curSeason?._id) {
           setSelectedSeason(data.curSeason._id);
+          localStorage.setItem(SEASON_STORAGE_KEY, data.curSeason._id);
         }
       } catch (err) {
         console.error("Error fetching seasons:", err);
@@ -53,13 +62,13 @@ export default function DashboardPage() {
     fetchSeasons();
   }, [selectedSeason]);
 
+  // 📊 Fetch dashboard data when season changes
   useEffect(() => {
     if (!selectedSeason) return;
 
     const fetchDashboardData = async () => {
-      setLoading(true);
+      setLoading(true); // show loader
       try {
-        // ✅ Fetch all 3 stats from backend
         const statsRes = await adminStatsAPI.getAdminStats(selectedSeason);
         setStats({
           totalPromoters: statsRes.totalPromoters ?? 0,
@@ -67,7 +76,7 @@ export default function DashboardPage() {
           netAmount: statsRes.totalAmount ?? 0,
         });
 
-        // Optional: fetch recent activities
+        // Parallel fetch
         const [customers, withdrawals] = await Promise.all([
           customerAPI.getNew(),
           withdrawalAPI.getAll(selectedSeason),
@@ -103,7 +112,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
-        setLoading(false);
+        setLoading(false); // hide loader
       }
     };
 
@@ -116,35 +125,46 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of the system</p>
+    <>
+      {/* 🌟 Global loader while fetching all data */}
+      <Loader show={loading || seasonsLoading} />
+
+      {/* Main content */}
+      {!loading && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground">Overview of the system</p>
+            </div>
+
+            <Select
+              value={selectedSeason ?? ""}
+              onValueChange={handleSeasonChange}
+            >
+              <SelectTrigger className="w-[240px]" disabled={seasonsLoading}>
+                <SelectValue
+                  placeholder={seasonsLoading ? "Loading..." : "Select season"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.map((s) => (
+                  <SelectItem key={s._id} value={s._id}>
+                    {s.season}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <StatsCards stats={stats} loading={loading} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RecentActivity activities={activities} loading={loading} />
+            <QuickActions />
+          </div>
         </div>
-
-        <Select value={selectedSeason ?? ""} onValueChange={handleSeasonChange}>
-          <SelectTrigger className="w-[240px]" disabled={seasonsLoading}>
-            <SelectValue
-              placeholder={seasonsLoading ? "Loading..." : "Select season"}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => (
-              <SelectItem key={s._id} value={s._id}>
-                {s.season}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <StatsCards stats={stats} loading={loading} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity activities={activities} loading={loading} />
-        <QuickActions />
-      </div>
-    </div>
+      )}
+    </>
   );
 }

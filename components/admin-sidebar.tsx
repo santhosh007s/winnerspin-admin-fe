@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { logout } from "@/store/authSlice";
 import type { RootState } from "@/store/store";
+import Image from "next/image";
 
 const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -45,11 +46,23 @@ export function AdminSidebar() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-border">
-        <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
-        <p className="text-sm text-muted-foreground">Welcome, {username}</p>
+      {/* Logo Section */}
+      <div className="flex flex-col items-center justify-center  border-b-2 border-border">
+        <Image
+          src="/Logo.png"
+          alt="Logo"
+          width={160}
+          height={160}
+          className="object-contain w-140 mb-[-70px] mt-[-60px] flex flex-col items-center justify-center "
+        />
+        <h2 className="text-lg font-semibold text-foreground mb-4">
+          {" "}
+          Winnerspin Admin Panel
+        </h2>
+        {/* <p className="text-sm text-muted-foreground">Welcome, {username}</p> */}
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
@@ -72,6 +85,7 @@ export function AdminSidebar() {
         })}
       </nav>
 
+      {/* Logout */}
       <div className="p-4 border-t border-border">
         <Button
           variant="ghost"
@@ -88,7 +102,7 @@ export function AdminSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-card lg:border-r lg:border-border">
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:bg-card lg:border-r-2 lg:border-border">
         <SidebarContent />
       </div>
 

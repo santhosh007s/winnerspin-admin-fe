@@ -10,8 +10,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { seasonAPI } from "@/lib/api";
 import { Plus, Calendar, Play, Clock, CheckCircle } from "lucide-react";
+import Loader from "@/components/loader"; // ✅ using your global loader
 
 interface SeasonItem {
   _id: string;
@@ -37,6 +48,8 @@ export default function SeasonsPage() {
   const [curSeason, setCurSeason] = useState<SeasonItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteSeason, setDeleteSeason] = useState<SeasonItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchSeasons();
@@ -46,7 +59,6 @@ export default function SeasonsPage() {
     try {
       setLoading(true);
       const response = (await seasonAPI.getAll()) as GetAllResponse;
-      // response.seasons matches the payload you provided
       setSeasons(response.seasons || []);
       setCurSeason(response.curSeason || null);
     } catch (err) {
@@ -58,23 +70,25 @@ export default function SeasonsPage() {
 
   const handleDelete = async (seasonId: string) => {
     try {
+      setIsDeleting(true);
+      setLoading(true);
       await seasonAPI.delete(seasonId);
       setSeasons((prev) => prev.filter((s) => s._id !== seasonId));
       if (curSeason?._id === seasonId) setCurSeason(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete season");
+    } finally {
+      setIsDeleting(false);
+      setLoading(false);
+      setDeleteSeason(null);
     }
   };
 
-  const getSeasonStatus = (
-    startDate: string | undefined,
-    endDate: string | undefined
-  ) => {
+  const getSeasonStatus = (startDate?: string, endDate?: string) => {
     if (!startDate || !endDate) return "unknown";
     const now = new Date();
     const start = new Date(startDate);
     const end = new Date(endDate);
-
     if (now < start) return "upcoming";
     if (now > end) return "completed";
     return "active";
@@ -97,7 +111,10 @@ export default function SeasonsPage() {
     d ? new Date(d).toLocaleDateString() : "-";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* ✅ Global Loader Overlay */}
+      <Loader show={loading} />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -114,7 +131,7 @@ export default function SeasonsPage() {
         </Button>
       </div>
 
-      {/* Current Season (if any) */}
+      {/* Current Season */}
       {curSeason && (
         <Card>
           <CardHeader>
@@ -152,53 +169,50 @@ export default function SeasonsPage() {
         </Card>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Seasons</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <Play className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.active}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {stats.upcoming}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-gray-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">
-              {stats.completed}
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          {
+            title: "Total Seasons",
+            icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
+            value: stats.total,
+          },
+          {
+            title: "Active",
+            icon: <Play className="h-4 w-4 text-green-600" />,
+            value: stats.active,
+            color: "text-green-600",
+          },
+          {
+            title: "Upcoming",
+            icon: <Clock className="h-4 w-4 text-blue-600" />,
+            value: stats.upcoming,
+            color: "text-blue-600",
+          },
+          {
+            title: "Completed",
+            icon: <CheckCircle className="h-4 w-4 text-gray-600" />,
+            value: stats.completed,
+            color: "text-gray-600",
+          },
+        ].map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
+              {stat.icon}
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stat.color || ""}`}>
+                {stat.value}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Seasons Table (simple inline table to reflect API shape) */}
+      {/* Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Seasons</CardTitle>
@@ -207,75 +221,93 @@ export default function SeasonsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto">
-                <thead>
-                  <tr className="text-left text-sm text-muted-foreground">
-                    <th className="px-2 py-2">Season</th>
-                    <th className="px-2 py-2">Start</th>
-                    <th className="px-2 py-2">End</th>
-                    <th className="px-2 py-2">Amount</th>
-                    <th className="px-2 py-2">Installments</th>
-                    <th className="px-2 py-2">Approved Promoters</th>
-                    <th className="px-2 py-2">Status</th>
-                    <th className="px-2 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {seasons.map((s) => (
-                    <tr key={s._id} className="border-t">
-                      <td className="px-2 py-3">{s.season}</td>
-                      <td className="px-2 py-3">{formatDate(s.startDate)}</td>
-                      <td className="px-2 py-3">{formatDate(s.endDate)}</td>
-                      <td className="px-2 py-3">{s.amount ?? "-"}</td>
-                      <td className="px-2 py-3">{s.totalInstallment ?? "-"}</td>
-                      <td className="px-2 py-3">
-                        {(s.approvedPromoters || []).length}
-                      </td>
-                      <td className="px-2 py-3">
-                        {getSeasonStatus(s.startDate, s.endDate)}
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="flex gap-2">
-                          {/* <Link href={`/admin/seasons/${s._id}`} className="text-blue-600">
-                            View
-                          </Link> */}
-                          <button
-                            onClick={() => handleDelete(s._id)}
-                            className="text-destructive"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {seasons.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="px-2 py-4 text-center text-muted-foreground"
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto">
+              <thead>
+                <tr className="text-left text-sm text-muted-foreground">
+                  <th className="px-2 py-2">Season</th>
+                  <th className="px-2 py-2">Start</th>
+                  <th className="px-2 py-2">End</th>
+                  <th className="px-2 py-2">Amount</th>
+                  <th className="px-2 py-2">Installments</th>
+                  <th className="px-2 py-2">Promoters</th>
+                  <th className="px-2 py-2">Status</th>
+                  <th className="px-2 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {seasons.map((s) => (
+                  <tr key={s._id} className="border-t">
+                    <td className="px-2 py-3">{s.season}</td>
+                    <td className="px-2 py-3">{formatDate(s.startDate)}</td>
+                    <td className="px-2 py-3">{formatDate(s.endDate)}</td>
+                    <td className="px-2 py-3">{s.amount ?? "-"}</td>
+                    <td className="px-2 py-3">{s.totalInstallment ?? "-"}</td>
+                    <td className="px-2 py-3">
+                      {(s.approvedPromoters || []).length}
+                    </td>
+                    <td className="px-2 py-3">
+                      {getSeasonStatus(s.startDate, s.endDate)}
+                    </td>
+                    <td className="px-2 py-3">
+                      <button
+                        onClick={() => setDeleteSeason(s)}
+                        className="text-destructive hover:underline"
                       >
-                        No seasons available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {seasons.length === 0 && !loading && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-2 py-4 text-center text-muted-foreground"
+                    >
+                      No seasons available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Error */}
       {error && (
         <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteSeason}
+        onOpenChange={() => setDeleteSeason(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Season</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the season “{deleteSeason?.season}
+              ”? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDelete(deleteSeason!._id)}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

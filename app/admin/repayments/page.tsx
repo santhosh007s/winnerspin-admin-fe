@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { repaymentAPI, promoterAPI } from "@/lib/api";
 import { RepaymentTable } from "@/components/repayment-table";
 import { RecentRepayments } from "@/components/recent-repayments";
+import Loader from "@/components/loader"; // ✅ global loader
 
 interface Repayment {
   _id: string;
@@ -37,8 +38,9 @@ export default function RepaymentsPage() {
   const [repayments, setRepayments] = useState<Repayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [approvingIds, setApprovingIds] = useState<string[]>([]);
 
-  const season =
+  const seasonId =
     typeof window !== "undefined"
       ? localStorage.getItem("selectedSeason")
       : null;
@@ -51,8 +53,8 @@ export default function RepaymentsPage() {
     try {
       setLoading(true);
       const [repaymentsRes, promotersRes] = await Promise.all([
-        repaymentAPI.getAll(season),
-        promoterAPI.getAll(season),
+        repaymentAPI.getAll(seasonId),
+        promoterAPI.getAll(seasonId),
       ]);
 
       const enriched = (repaymentsRes.repayments || []).map((r: any) => {
@@ -76,25 +78,31 @@ export default function RepaymentsPage() {
   };
 
   const handleApprove = async (installmentId: string, promoterId: string) => {
+    setApprovingIds((prev) => [...prev, installmentId]);
+
     try {
       await repaymentAPI.approve(installmentId, promoterId);
-      setRepayments((prev) =>
-        prev.map((r) =>
-          r._id === installmentId ? { ...r, isVerified: true } : r
-        )
-      );
+      await fetchRepayments();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to approve repayment"
       );
+    } finally {
+      setApprovingIds((prev) => prev.filter((id) => id !== installmentId));
     }
   };
 
   const pendingRepayments = repayments.filter((r) => !r.isVerified);
   const processedRepayments = repayments.filter((r) => r.isVerified);
 
+  // ✅ Show loader when loading data or approving
+  const showLoader = loading || approvingIds.length > 0;
+
   return (
-    <div className="space-y-6 px-4 sm:px-6 lg:px-8 py-6">
+    <div className="relative space-y-6 px-4 sm:px-6 lg:px-8 py-6">
+      {/* ✅ Global Loader */}
+      <Loader show={showLoader} />
+
       {/* Header */}
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -138,6 +146,7 @@ export default function RepaymentsPage() {
                     repayments={pendingRepayments}
                     loading={loading}
                     onApprove={handleApprove}
+                    approvingIds={approvingIds}
                   />
                 </CardContent>
               </Card>
@@ -157,6 +166,7 @@ export default function RepaymentsPage() {
                     repayments={repayments}
                     loading={loading}
                     onApprove={handleApprove}
+                    approvingIds={approvingIds}
                   />
                 </CardContent>
               </Card>
@@ -178,6 +188,7 @@ export default function RepaymentsPage() {
                     repayments={processedRepayments}
                     loading={loading}
                     onApprove={handleApprove}
+                    approvingIds={approvingIds}
                   />
                 </CardContent>
               </Card>
@@ -191,6 +202,7 @@ export default function RepaymentsPage() {
             repayments={pendingRepayments}
             loading={loading}
             onApprove={handleApprove}
+            approvingIds={approvingIds}
           />
         </aside>
       </div>

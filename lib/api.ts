@@ -238,7 +238,7 @@ export const posterAPI = {
 
 export const repaymentAPI = {
   getAll: (seasonId: string | null) =>
-    apiRequest(`/all-repayments${seasonId ? `?season=${seasonId}` : ""}`),
+    apiRequest(`/all-repayments${seasonId ? `?seasonId=${seasonId}` : ""}`),
 
   approve: (installmentId: string, promoterId: string) =>
     apiRequest(`/approve-repayment`, {
