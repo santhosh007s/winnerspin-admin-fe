@@ -1,5 +1,4 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://65.1.111.185/admin";
+export const API_BASE_URL = "http://65.1.111.185/admin";
 
 export const apiRequest = async (
   endpoint: string,
