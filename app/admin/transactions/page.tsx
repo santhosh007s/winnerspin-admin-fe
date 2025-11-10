@@ -11,74 +11,67 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionTable } from "@/components/transaction-table";
 import { TransactionStats } from "@/components/transaction-stats";
-import { EarningsSummary } from "@/components/earnings-summary";
 import { RecentTransactions } from "@/components/recent-transactions";
 import { transactionAPI, seasonAPI, promoterAPI } from "@/lib/api";
-import Loader from "@/components/loader"; // ✅ use your global loader
+import Loader from "@/components/loader";
 
-interface Transaction {
-  id: string;
+// ✅ Import types from your types.ts
+import type { Transaction, Promoter, Season } from "@/lib/types";
+
+interface ServerTransaction {
+  _id: string;
   type: "credit" | "debit";
   amount: number;
   from: string;
   to: string;
-  seasonId?: string;
-  seasonName?: string;
-  promoterId?: string;
-  promoterName?: string;
-  customerId?: string;
-  customerName?: string;
+  season: {
+    _id: string;
+    season: string;
+  };
+  promoter: {
+    username?: string;
+    _id: string;
+    userid?: string;
+  };
+  customer: {
+    username?: string;
+    _id: string;
+  };
   date: string;
-  description?: string;
-  status: "completed" | "pending" | "failed" | string;
-  creditedTo?: "admin" | "promoter";
-}
-
-interface ServerPromoter {
-  _id: string;
-  userid?: string;
-  username?: string;
-}
-
-interface ServerCustomer {
-  _id: string;
-  username?: string;
-}
-
-interface ServerTransaction {
-  _id: string;
-  season: { _id: string; season: string };
-  promoter?: ServerPromoter;
-  customer?: ServerCustomer;
-  amount: number;
-  to: "promoter" | "admin";
   createdAt: string;
-  [k: string]: unknown;
+  description?: string;
+  
+  status: "completed" | "pending" | "failed";
+  creditedTo?: "admin" | "promoter";
 }
 
 interface ServerWithdrawal {
   _id: string;
-  amount: string | number;
-  requester: ServerPromoter;
+  amount: number | string;
+  requester: {
+    username?: string;
+    _id: string;
+    userid?: string;
+  };
   createdAt: string;
   status?: string;
-  [k: string]: unknown;
-}
-
-interface Season {
-  _id: string;
-  Season?: string;
-  name?: string;
-  title?: string;
-  [k: string]: unknown;
+  season?: {
+    _id: string;
+    season: string;
+  };
 }
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
-  const [promoters, setPromoters] = useState<ServerPromoter[]>([]);
+  const [promoters, setPromoters] = useState<Promoter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const seasonId =
+    typeof window !== "undefined"
+      ? localStorage.getItem("selectedSeason") || ""
+      : "";
 
   useEffect(() => {
     fetchData();
@@ -88,111 +81,92 @@ export default function TransactionsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const season = localStorage.getItem("selectedSeason");
 
       const [transactionRes, seasonsRes, promotersRes] = await Promise.all([
-        transactionAPI.getAll(season) as Promise<{
-          message?: string;
-          transactions?: ServerTransaction[];
-          withdrawals?: ServerWithdrawal[];
-        }>,
-        seasonAPI.getAll() as Promise<unknown>,
-        promoterAPI.getAll(season) as Promise<unknown>,
+        transactionAPI.getAll(),
+        seasonAPI.getAll(),
+        promoterAPI.getAll(seasonId),
       ]);
 
-      const serverTransactions: ServerTransaction[] =
-        transactionRes?.transactions || [];
-      const serverWithdrawals: ServerWithdrawal[] =
-        transactionRes?.withdrawals || [];
+      const serverTransactions = transactionRes.transactions ?? [];
+      const serverWithdrawals = transactionRes.withdrawals ?? [];
 
-      // ✅ Map credits
-      const mappedCredits: Transaction[] = serverTransactions.map((tx) => {
-        const creditedTo: "admin" | "promoter" =
-          tx.to === "admin" ? "admin" : "promoter";
-        const from = tx.customer?.username ?? "customer";
-        const to = creditedTo === "admin" ? "admin" : "promoter";
-        return {
-          id: tx._id,
-          type: "credit",
-          creditedTo,
-          amount: tx.amount,
-          from,
-          to,
-          seasonId: tx.season?._id,
-          seasonName: tx.season?.season,
-          promoterId: tx.promoter?._id,
-          promoterName: tx.promoter?.username ?? tx.promoter?.userid,
-          customerId: tx.customer?._id,
-          customerName: tx.customer?.username,
-          date: tx.createdAt,
-          status: "completed",
-        };
-      });
+      // Map credits
+  const mappedCredits: Transaction[] = serverTransactions.map(
+    (tx: ServerTransaction) => ({
+      id: tx._id,
+      _id: tx._id,
+      type: "credit",
+      creditedTo: tx.to === "admin" ? "admin" : "promoter",
+      amount: tx.amount,
+      from: tx.customer?.username ?? "customer",
+      to: tx.to === "admin" ? "admin" : "promoter",
+      seasonId: tx.season?._id ?? "",
+      seasonName: tx.season?.season,
+      promoterId: tx.promoter?._id,
+      promoterName: tx.promoter?.username ?? tx.promoter?.userid,
+      customerId: tx.customer?._id,
+      customerName: tx.customer?.username,
+      date: tx.createdAt, // use this for sorting & display
+      status: "completed",
+    })
+  );
 
-      // ✅ Map debits (withdrawals)
-      const mappedDebits: Transaction[] = serverWithdrawals.map((w) => {
-        const amountNum =
-          typeof w.amount === "string"
-            ? parseFloat(w.amount) || 0
-            : Number(w.amount || 0);
-        return {
-          id: w._id,
-          type: "debit",
-          amount: amountNum,
-          from: "admin",
-          to: w.requester?.username ?? w.requester?.userid ?? "promoter",
-          seasonId: w.season?._id,
-          seasonName: w.season?.season,
-          promoterId: w.requester?._id,
-          promoterName: w.requester?.username ?? w.requester?.userid,
-          customerId: undefined,
-          customerName: undefined,
-          date: w.createdAt,
-          status:
-            w.status === "approved"
-              ? "completed"
-              : (w.status as Transaction["status"]) || "completed",
-        };
-      });
+  const mappedDebits: Transaction[] = serverWithdrawals.map(
+    (w: ServerWithdrawal) => ({
+      id: w._id,
+      _id: w._id,
+      type: "debit",
+      amount: typeof w.amount === "string" ? parseFloat(w.amount) : w.amount,
+      from: "admin",
+      to: w.requester?.username ?? w.requester?.userid ?? "promoter",
+      seasonId: w.season?._id ?? "",
+      seasonName: w.season?.season,
+      promoterId: w.requester?._id,
+      promoterName: w.requester?.username ?? w.requester?.userid,
+      customerId: undefined,
+      customerName: undefined,
+      date: w.createdAt,
+      status:
+        w.status === "approved"
+          ? "completed"
+          : w.status === "pending"
+          ? "pending"
+          : "failed",
+    })
+  );
 
-      // ✅ Combine + sort by date
-      const combined = [...mappedCredits, ...mappedDebits].sort((a, b) => {
-        const da = new Date(a.date).getTime();
-        const db = new Date(b.date).getTime();
-        return db - da;
-      });
+
+      // Combine and sort by date
+      const combined: Transaction[] = [...mappedCredits, ...mappedDebits].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
 
       setTransactions(combined);
 
-      // ✅ Normalize season and promoter data
-      const seasonsArray: Season[] = Array.isArray((seasonsRes as any)?.seasons)
-        ? (seasonsRes as any).seasons
+      // Normalize seasons
+      const seasonsArray: Season[] = Array.isArray(seasonsRes.seasons)
+        ? seasonsRes.seasons
         : Array.isArray(seasonsRes)
         ? (seasonsRes as Season[])
         : [];
 
-      const promotersArray: ServerPromoter[] = Array.isArray(
-        (promotersRes as any)?.allPromoters
-      )
-        ? (promotersRes as any).allPromoters
-        : Array.isArray((promotersRes as any)?.promoters)
-        ? (promotersRes as any).promoters
+      // Normalize promoters
+      const promotersArray: Promoter[] = Array.isArray(promotersRes.promoters)
+        ? promotersRes.promoters
         : Array.isArray(promotersRes)
-        ? (promotersRes as ServerPromoter[])
+        ? (promotersRes as Promoter[])
         : [];
 
       setSeasons(seasonsArray);
       setPromoters(promotersArray);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch transaction data"
-      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to fetch data");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Stats
   const totalCount = transactions.length;
   const creditTransactions = transactions.filter((t) => t.type === "credit");
   const debitTransactions = transactions.filter((t) => t.type === "debit");
@@ -204,11 +178,9 @@ export default function TransactionsPage() {
   ).length;
 
   return (
-    <div className="space-y-6 relative">
-      {/* ✅ Loader overlay */}
+    <div className="space-y-6 relative mt-15 lg:mt-0">
       <Loader show={loading} />
 
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
         <p className="text-muted-foreground">
@@ -216,10 +188,8 @@ export default function TransactionsPage() {
         </p>
       </div>
 
-      {/* Stats */}
       <TransactionStats transactions={transactions} loading={loading} />
 
-      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Tabs defaultValue="all" className="space-y-4">
@@ -288,9 +258,7 @@ export default function TransactionsPage() {
                 </CardHeader>
                 <CardContent>
                   <TransactionTable
-                    transactions={creditTransactions.filter(
-                      (t) => t.creditedTo === "promoter"
-                    )}
+                    transactions={creditTransactions.filter((t) => t.creditedTo === "promoter")}
                     loading={loading}
                     seasons={seasons}
                     promoters={promoters}
@@ -320,7 +288,6 @@ export default function TransactionsPage() {
           </Tabs>
         </div>
 
-        {/* Sidebar */}
         <div>
           <RecentTransactions transactions={transactions} loading={loading} />
         </div>

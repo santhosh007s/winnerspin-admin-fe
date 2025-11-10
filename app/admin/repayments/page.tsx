@@ -14,6 +14,11 @@ import { RepaymentTable } from "@/components/repayment-table";
 import { RecentRepayments } from "@/components/recent-repayments";
 import Loader from "@/components/loader"; // ✅ global loader
 
+interface Promoter {
+  _id: string;
+  username: string;
+}
+
 interface Repayment {
   _id: string;
   customer: {
@@ -32,6 +37,15 @@ interface Repayment {
   installmentNo: number;
   amount: string;
   isVerified: boolean;
+  promoterName?: string;
+}
+
+interface RepaymentResponse {
+  repayments: Repayment[];
+}
+
+interface PromoterResponse {
+  allPromoters: Promoter[];
 }
 
 export default function RepaymentsPage() {
@@ -42,30 +56,38 @@ export default function RepaymentsPage() {
 
   const seasonId =
     typeof window !== "undefined"
-      ? localStorage.getItem("selectedSeason")
-      : null;
+      ? localStorage.getItem("selectedSeason") ?? ""
+      : "";
 
   useEffect(() => {
     fetchRepayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRepayments = async () => {
     try {
       setLoading(true);
-      const [repaymentsRes, promotersRes] = await Promise.all([
-        repaymentAPI.getAll(seasonId),
-        promoterAPI.getAll(seasonId),
+      const validSeasonId = seasonId || "";
+
+      const [repaymentsRes, promotersRes]: [
+        RepaymentResponse,
+        PromoterResponse
+      ] = await Promise.all([
+        repaymentAPI.getAll(validSeasonId),
+        promoterAPI.getAll(validSeasonId),
       ]);
 
-      const enriched = (repaymentsRes.repayments || []).map((r: any) => {
-        const promoter = promotersRes.allPromoters?.find(
-          (p: any) => p._id === r.customer.promoter
-        );
-        return {
-          ...r,
-          promoterName: promoter?.username || "Unknown",
-        };
-      });
+      const enriched: Repayment[] = (repaymentsRes.repayments || []).map(
+        (r: Repayment) => {
+          const promoter = promotersRes.allPromoters?.find(
+            (p: Promoter) => p._id === r.customer.promoter
+          );
+          return {
+            ...r,
+            promoterName: promoter?.username || "Unknown",
+          };
+        }
+      );
 
       setRepayments(enriched);
     } catch (err) {
@@ -94,19 +116,17 @@ export default function RepaymentsPage() {
 
   const pendingRepayments = repayments.filter((r) => !r.isVerified);
   const processedRepayments = repayments.filter((r) => r.isVerified);
-
-  // ✅ Show loader when loading data or approving
   const showLoader = loading || approvingIds.length > 0;
 
   return (
-    <div className="relative space-y-6 px-4 sm:px-6 lg:px-8 py-6">
+    <div className="relative space-y-6 px-4 sm:px-6 lg:px-8 py-6 mt-15 lg:mt-0">
       {/* ✅ Global Loader */}
       <Loader show={showLoader} />
 
       {/* Header */}
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          Repayments
+          Winnerspin Repayments
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
           Manage customer repayments and promoter commission approvals

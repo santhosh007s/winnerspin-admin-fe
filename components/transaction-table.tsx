@@ -19,55 +19,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  MoreHorizontal,
-  Eye,
-  Search,
-  ArrowUpRight,
-  ArrowDownLeft,
-} from "lucide-react";
-
-interface Transaction {
-  id: string;
-  type: "credit" | "debit";
-  amount: number;
-  from: string;
-  to: string;
-  seasonId: string;
-  seasonName?: string;
-  promoterId?: string;
-  promoterName?: string;
-  customerId?: string;
-  customerName?: string;
-  date: string;
-  description?: string;
-  status: "completed" | "pending" | "failed";
-}
+import { Search, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Transaction, Season, Promoter } from "@/lib/types";
 
 interface TransactionTableProps {
   transactions: Transaction[];
   loading?: boolean;
-  seasons?: Array<{ _id: string; Season: string }>;
-  promoters?: Array<{ _id: string; username: string }>;
+  seasons?: Season[];
+  promoters?: Promoter[];
 }
 
 export function TransactionTable({
   transactions,
   loading,
-  seasons = [],
   promoters = [],
 }: TransactionTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [seasonFilter, setSeasonFilter] = useState("all");
-  const [promoterFilter, setPromoterFilter] = useState("all");
-console.log(transactions)
+  const [typeFilter, setTypeFilter] = useState<"all" | "credit" | "debit">(
+    "all"
+  );
+  const [seasonFilter] = useState<"all" | string>("all");
+  const [promoterFilter, setPromoterFilter] = useState<"all" | string>("all");
+
+  // ✅ Fix: safely cast onValueChange handler to match Radix Select
+  const handleTypeFilterChange = (value: string) => {
+    if (value === "credit" || value === "debit" || value === "all") {
+      setTypeFilter(value);
+    }
+  };
+
+  const handlePromoterFilterChange = (value: string) => {
+    setPromoterFilter(value);
+  };
+
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
       transaction.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,7 +68,7 @@ console.log(transactions)
     return matchesSearch && matchesType && matchesSeason && matchesPromoter;
   });
 
-  const getTypeColor = (type: string) => {
+  const getTypeColor = (type: Transaction["type"]) => {
     switch (type) {
       case "credit":
         return "bg-green-100 text-green-800";
@@ -95,7 +79,7 @@ console.log(transactions)
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: Transaction["status"]) => {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800";
@@ -137,7 +121,9 @@ console.log(transactions)
             className="pl-10"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+
+        {/* ✅ fixed: explicit handler ensures correct type */}
+        <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -147,20 +133,12 @@ console.log(transactions)
             <SelectItem value="debit">Debit</SelectItem>
           </SelectContent>
         </Select>
-        {/* <Select value={seasonFilter} onValueChange={setSeasonFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Season" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Seasons</SelectItem>
-            {seasons.map((season) => (
-              <SelectItem key={season._id} value={season._id}>
-                {season.Season}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select> */}
-        <Select value={promoterFilter} onValueChange={setPromoterFilter}>
+
+        {/* Promoter filter */}
+        <Select
+          value={promoterFilter}
+          onValueChange={handlePromoterFilterChange}
+        >
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Promoter" />
           </SelectTrigger>
@@ -168,7 +146,7 @@ console.log(transactions)
             <SelectItem value="all">All Promoters</SelectItem>
             {promoters.map((promoter) => (
               <SelectItem key={promoter._id} value={promoter._id}>
-                {promoter.username}
+                {promoter.username || "Unknown"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -188,14 +166,14 @@ console.log(transactions)
               <TableHead>Season</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
-              {/* <TableHead className="text-right">Actions</TableHead> */}
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {filteredTransactions.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={8}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No transactions found
@@ -207,6 +185,7 @@ console.log(transactions)
                   <TableCell className="font-mono text-sm">
                     {transaction.id}
                   </TableCell>
+
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {transaction.type === "credit" ? (
@@ -222,6 +201,7 @@ console.log(transactions)
                       </Badge>
                     </div>
                   </TableCell>
+
                   <TableCell className="font-medium">
                     ₹{transaction.amount.toLocaleString()}
                   </TableCell>
@@ -239,21 +219,6 @@ console.log(transactions)
                       {transaction.status}
                     </Badge>
                   </TableCell>
-                  {/* <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details hj
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell> */}
                 </TableRow>
               ))
             )}
@@ -261,7 +226,6 @@ console.log(transactions)
         </Table>
       </div>
 
-      {/* Pagination placeholder */}
       {filteredTransactions.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">

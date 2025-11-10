@@ -35,22 +35,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Eye, Check, X, Search } from "lucide-react";
+import { MoreHorizontal, Check, X, Search } from "lucide-react";
+import { Withdrawal } from "@/lib/types";
 
-interface Withdrawal {
-  _id: string;
-  promoterId: string;
-  promoterName?: string;
-  promoterUsername?: string;
-  amount: number;
-  status: "pending" | "approved" | "rejected";
-  requestDate: string;
-  processedDate?: string;
-  notes?: string;
-}
+// ✅ Extended type for frontend safety
+export type ExtendedWithdrawal = Withdrawal & {
+  requester: {
+    _id?: string;
+    userid?: string;
+    username?: string;
+  };
+  requestDate?: string; // frontend-safe optional date
+};
 
 interface WithdrawalTableProps {
-  withdrawals: Withdrawal[];
+  withdrawals: ExtendedWithdrawal[];
   loading?: boolean;
   onApprove: (withdrawalId: string) => void;
   onReject: (withdrawalId: string) => void;
@@ -65,16 +64,16 @@ export function WithdrawalTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionWithdrawal, setActionWithdrawal] = useState<{
-    withdrawal: Withdrawal;
+    withdrawal: ExtendedWithdrawal;
     action: "approve" | "reject";
   } | null>(null);
 
   const filteredWithdrawals = withdrawals.filter((withdrawal) => {
     const matchesSearch =
-      withdrawal.promoterUsername
+      withdrawal.requester?.username
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      withdrawal.promoterName
+      withdrawal.requester?.userid
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
       withdrawal.amount.toString().includes(searchTerm);
@@ -100,7 +99,6 @@ export function WithdrawalTable({
 
   const handleAction = () => {
     if (!actionWithdrawal) return;
-
     if (actionWithdrawal.action === "approve") {
       onApprove(actionWithdrawal.withdrawal._id);
     } else {
@@ -130,7 +128,7 @@ export function WithdrawalTable({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Search by promoter name or amount..."
+            placeholder="Search by username or amount..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -141,7 +139,7 @@ export function WithdrawalTable({
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
@@ -173,79 +171,75 @@ export function WithdrawalTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredWithdrawals.map((withdrawal) => (
-                <TableRow key={withdrawal._id}>
+              filteredWithdrawals.map((w) => (
+                <TableRow key={w._id}>
                   <TableCell>
                     <div>
                       <p className="font-medium">
-                        {withdrawal.requester.username || "Unknown"}
+                        {w.requester?.username || "Unknown"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {withdrawal.requester.userid || withdrawal.promoterId}
+                        {w.requester?.userid || w.promoterId}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    ₹{withdrawal.amount.toLocaleString()}
-                  </TableCell>
+                  <TableCell>₹{w.amount.toLocaleString()}</TableCell>
                   <TableCell>
                     <Badge
                       variant="secondary"
-                      className={getStatusColor(withdrawal.status)}
+                      className={getStatusColor(w.status)}
                     >
-                      {withdrawal.status}
+                      {w.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {new Date(withdrawal.requestDate).toLocaleDateString()}
+                    {new Date(
+                      w.requestDate ?? w.createdAt
+                    ).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {withdrawal.processedDate
-                      ? new Date(withdrawal.processedDate).toLocaleDateString()
+                    {w.updatedAt
+                      ? new Date(w.updatedAt).toLocaleDateString()
                       : "N/A"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {withdrawal.status === "pending" && (
-                          <>
-                            <DropdownMenuItem
-                              className="text-green-600"
-                              onClick={() =>
-                                setActionWithdrawal({
-                                  withdrawal,
-                                  action: "approve",
-                                })
-                              }
-                            >
-                              <Check className="mr-2 h-4 w-4" />
-                              Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() =>
-                                setActionWithdrawal({
-                                  withdrawal,
-                                  action: "reject",
-                                })
-                              }
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Reject
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {w.status === "pending" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-green-600"
+                            onClick={() =>
+                              setActionWithdrawal({
+                                withdrawal: w,
+                                action: "approve",
+                              })
+                            }
+                          >
+                            <Check className="mr-2 h-4 w-4" /> Approve
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() =>
+                              setActionWithdrawal({
+                                withdrawal: w,
+                                action: "reject",
+                              })
+                            }
+                          >
+                            <X className="mr-2 h-4 w-4" /> Reject
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        {w.status === "approved" ? "Approved" : "Rejected"}
+                      </span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -253,23 +247,6 @@ export function WithdrawalTable({
           </TableBody>
         </Table>
       </div>
-
-      {/* Pagination placeholder */}
-      {filteredWithdrawals.length > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredWithdrawals.length} withdrawals
-          </p>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" disabled>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Action Confirmation Dialog */}
       <AlertDialog
@@ -279,16 +256,15 @@ export function WithdrawalTable({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {actionWithdrawal?.action === "approve"
-                ? "Approve Withdrawal"
-                : "Reject Withdrawal"}
+              {actionWithdrawal?.action === "approve" ? "Approve" : "Reject"}{" "}
+              Withdrawal
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {actionWithdrawal?.action} the withdrawal
-              request of ${actionWithdrawal?.withdrawal.amount.toLocaleString()}{" "}
-              from {actionWithdrawal?.withdrawal.promoterUsername}?
-              {actionWithdrawal?.action === "approve" &&
-                " This will process the payment to the promoter."}
+              Are you sure you want to {actionWithdrawal?.action} a withdrawal
+              of ₹{actionWithdrawal?.withdrawal.amount.toLocaleString()} from{" "}
+              {actionWithdrawal?.withdrawal.requester?.username ||
+                "this promoter"}
+              ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

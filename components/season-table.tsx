@@ -410,7 +410,7 @@ export function SeasonTable({ seasons, loading, onDelete }: SeasonTableProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Season</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete season "{deleteSeason?.Season}"?
+              Are you sure you want to delete season {deleteSeason?.Season}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

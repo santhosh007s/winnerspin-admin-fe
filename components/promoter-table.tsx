@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MoreHorizontal, Eye, Edit, Trash2, Search } from "lucide-react";
+import { MoreHorizontal, Eye, Edit, Search } from "lucide-react";
 import { promoterAPI } from "@/lib/api";
 
 interface Promoter {
@@ -49,9 +49,9 @@ interface PromoterTableProps {
   approvedPromoters?: Promoter[];
   nonApprovedPromoters?: Promoter[];
   inactivePromoters?: Promoter[];
+  allInactivePromoters?: Promoter[];
   loading?: boolean;
   onDelete: (promoterId: string) => void;
-  allInactivePromoters?: Promoter[];
 }
 
 export function PromoterTable({
@@ -76,7 +76,7 @@ export function PromoterTable({
   ].map((p) => ({
     balance: 0,
     customers: [],
-    userid: p.username, // fallback if userid missing
+    userid: p.userid ?? p.username, // fallback if userid missing
     ...p,
   }));
 
@@ -114,7 +114,11 @@ export function PromoterTable({
   const handleDelete = async () => {
     if (deletePromoter) {
       try {
-        await promoterAPI.toggleStatus(deletePromoter._id);
+        // ✅ toggleStatus expects (id: string, isActive: boolean)
+        await promoterAPI.toggleStatus(
+          deletePromoter._id,
+          !deletePromoter.isActive
+        );
         onDelete(deletePromoter._id);
         setDeletePromoter(null);
       } catch (error) {
@@ -139,7 +143,12 @@ export function PromoterTable({
   return (
     <div className="space-y-4">
       {/* Tabs for status filter */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
+      <Tabs
+        value={tab}
+        onValueChange={(v: string) =>
+          setTab(v as "all" | "approved" | "unapproved" | "inactive")
+        }
+      >
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="approved">Approved</TabsTrigger>
@@ -227,13 +236,14 @@ export function PromoterTable({
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem
+                        {/* Uncomment to use delete confirmation */}
+                        {/* <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => setDeletePromoter(promoter)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Deactivate
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

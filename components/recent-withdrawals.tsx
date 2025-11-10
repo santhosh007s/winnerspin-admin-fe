@@ -7,25 +7,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-
-interface Withdrawal {
-  _id: string;
-  promoterId: string;
-  promoterName?: string;
-  promoterUsername?: string;
-  amount: number;
-  status: "pending" | "approved" | "rejected";
-  requestDate: string;
-}
+import { ExtendedWithdrawal } from "./withdrawal-table";
 
 interface RecentWithdrawalsProps {
-  withdrawals: Withdrawal[];
+  withdrawals: ExtendedWithdrawal[];
   loading?: boolean;
-  onApprove: (withdrawalId: string) => void;
-  onReject: (withdrawalId: string) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
 }
 
 export function RecentWithdrawals({
@@ -34,6 +25,8 @@ export function RecentWithdrawals({
   onApprove,
   onReject,
 }: RecentWithdrawalsProps) {
+  if (loading) return <p>Loading...</p>;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "approved":
@@ -47,104 +40,55 @@ export function RecentWithdrawals({
     }
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Withdrawals</CardTitle>
-          <CardDescription>Latest withdrawal requests</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <div className="h-10 w-10 bg-muted animate-pulse rounded-full" />
-                <div className="flex-1">
-                  <div className="h-4 bg-muted animate-pulse rounded w-3/4 mb-2" />
-                  <div className="h-3 bg-muted animate-pulse rounded w-1/2" />
-                </div>
-                <div className="h-6 bg-muted animate-pulse rounded w-16" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const recentWithdrawals = withdrawals.slice(0, 5);
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent Withdrawals</CardTitle>
-        <CardDescription>
-          Latest withdrawal requests requiring attention
-        </CardDescription>
+        <CardDescription>Latest withdrawal requests</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {recentWithdrawals.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No recent withdrawals
-            </p>
-          ) : (
-            recentWithdrawals.map((withdrawal) => (
-              <div
-                key={withdrawal._id}
-                className="flex items-center justify-between space-x-4"
-              >
-                <div className="flex items-center space-x-4 flex-1">
-                  <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">
-                      {withdrawal.promoterUsername?.charAt(0).toUpperCase() ||
-                        "?"}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {withdrawal.promoterUsername || "Unknown Promoter"}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-muted-foreground">
-                        ${withdrawal.amount.toLocaleString()}
-                      </p>
-                      <Badge
-                        variant="secondary"
-                        className={getStatusColor(withdrawal.status)}
-                      >
-                        {withdrawal.status}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(withdrawal.requestDate), {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                </div>
-                {withdrawal.status === "pending" && (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onApprove(withdrawal._id)}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onReject(withdrawal._id)}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                )}
+        {withdrawals.slice(0, 5).map((w) => (
+          <div key={w._id} className="flex justify-between items-center mb-3">
+            <div>
+              <p className="font-medium">
+                {w.requester?.username || "Unknown Promoter"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                ₹{w.amount.toLocaleString()} —{" "}
+                {
+                  // ✅ Safely handle possibly undefined requestDate
+                  formatDistanceToNow(
+                    new Date(w.requestDate ?? w.createdAt ?? Date.now()),
+                    { addSuffix: true }
+                  )
+                }
+              </p>
+            </div>
+
+            {w.status === "pending" ? (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => onApprove(w._id)}
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onReject(w._id)}
+                >
+                  Reject
+                </Button>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              <Badge variant="secondary" className={getStatusColor(w.status)}>
+                {w.status}
+              </Badge>
+            )}
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

@@ -111,14 +111,16 @@ export default function SeasonsPage() {
     d ? new Date(d).toLocaleDateString() : "-";
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative mt-15 lg:mt-0">
       {/* ✅ Global Loader Overlay */}
       <Loader show={loading} />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Seasons</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Winnerspin Seasons
+          </h1>
           <p className="text-muted-foreground">
             Manage promotional seasons and promoter assignments
           </p>

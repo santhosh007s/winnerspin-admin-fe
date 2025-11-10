@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -29,6 +28,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Eye, Search } from "lucide-react";
 
+// ----------------------
+// TYPES
+// ----------------------
+interface Season {
+  season?: string;
+}
+
+interface Promoter {
+  username?: string;
+}
+
 interface Customer {
   _id: string;
   username: string;
@@ -40,26 +50,30 @@ interface Customer {
   seasonId?: string;
   seasonName?: string;
   createdAt: string;
+  promoter?: Promoter;
+  seasons?: Season[];
 }
 
 interface CustomerTableProps {
   customers: Customer[];
   loading?: boolean;
   showActions?: boolean;
-  onApprove?: (customer: Customer) => void;
   onReject?: (customer: Customer) => void;
   handleApprove?: (customer: {
     customerId: string;
     promoterId: string;
     seasonId: string;
-  }) => Promise<any> | void;
+  }) => Promise<unknown> | void;
+  fetchNewCustomers?: () => Promise<void>;
 }
 
+// ----------------------
+// COMPONENT
+// ----------------------
 export function CustomerTable({
   customers,
   loading,
   showActions = true,
-  onApprove,
   onReject,
   handleApprove,
   fetchNewCustomers,
@@ -68,8 +82,8 @@ export function CustomerTable({
   const [statusFilter, setStatusFilter] = useState("all");
   const [promoterFilter, setPromoterFilter] = useState("all");
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const router = useRouter();
 
+  // Filter logic
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
       customer.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -102,6 +116,7 @@ export function CustomerTable({
     new Set(customers.map((c) => c.promoterName).filter(Boolean))
   );
 
+  // Loading skeleton
   if (loading) {
     return (
       <div className="space-y-4">
@@ -130,6 +145,7 @@ export function CustomerTable({
             className="pl-10"
           />
         </div>
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Status" />
@@ -141,6 +157,7 @@ export function CustomerTable({
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
+
         <Select value={promoterFilter} onValueChange={setPromoterFilter}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Promoter" />
@@ -173,6 +190,7 @@ export function CustomerTable({
               )}
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {filteredCustomers.length === 0 ? (
               <TableRow>
@@ -199,20 +217,18 @@ export function CustomerTable({
                       {customer.status}
                     </Badge>
                   </TableCell>
-                  {/* <TableCell>{customer.promoter.username || "Unassigned"}</TableCell>
-                  <TableCell>{customer.seasons.season || "N/A"}</TableCell> */}
                   <TableCell>
-                    {customer.promoter.username || "Unassigned"}
+                    {customer.promoter?.username || "Unassigned"}
                   </TableCell>
                   <TableCell>
                     {customer.seasons && customer.seasons.length > 0
-                      ? customer.seasons.map((s: any) => s.season).join(", ")
+                      ? customer.seasons.map((s) => s.season).join(", ")
                       : "N/A"}
                   </TableCell>
-
                   <TableCell>
                     {new Date(customer.createdAt).toLocaleDateString()}
                   </TableCell>
+
                   {showActions && (
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -221,6 +237,7 @@ export function CustomerTable({
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
+
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
                             <Link href={`/admin/customers/${customer._id}`}>
@@ -228,7 +245,8 @@ export function CustomerTable({
                               View Details
                             </Link>
                           </DropdownMenuItem>
-                          {/* {customer.status === "pending" && handleApprove && (
+
+                          {customer.status === "pending" && handleApprove && (
                             <DropdownMenuItem
                               disabled={approvingId === customer._id}
                               onClick={async () => {
@@ -237,32 +255,16 @@ export function CustomerTable({
                                 try {
                                   await handleApprove({
                                     customerId: customer._id.toString(),
-                                    promoterId: customer.promoter?.toString() || "",
-                                    seasonId: customer.seasons[0]?.toString() || "",
+                                    promoterId:
+                                      customer.promoterId?.toString() || "",
+                                    seasonId:
+                                      customer.seasonId?.toString() || "",
                                   });
                                 } finally {
                                   setApprovingId(null);
-                                  // refresh data (e.g., /new-customer)
-                                  router.refresh();
-                                }
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Approve
-                            </DropdownMenuItem>
-                          )} */}
-                          {customer.status === "pending" && handleApprove && (
-                            <DropdownMenuItem
-                              disabled={approvingId === customer._id} // disable while approving
-                              onClick={async () => {
-                                if (!handleApprove || approvingId) return; // prevent double clicks
-                                setApprovingId(customer._id);
-                                try {
-                                  await handleApprove(customer);
-                                } finally {
-                                  setApprovingId(null);
-                                  fetchNewCustomers(); // refresh after API completes
-                                  // router.refresh(); // refresh after API completes
+                                  if (fetchNewCustomers) {
+                                    await fetchNewCustomers();
+                                  }
                                 }
                               }}
                             >

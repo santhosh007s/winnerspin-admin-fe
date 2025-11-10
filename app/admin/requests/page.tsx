@@ -10,12 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CustomerTable } from "@/components/customer-table";
-import { ApprovalDialog } from "@/components/approval-dialog";
 import { RejectionDialog } from "@/components/rejection-dialog";
 import { customerAPI } from "@/lib/api";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Loader from "@/components/loader"; // ✅ your global loader
+import Loader from "@/components/loader"; // ✅ global loader
 
 interface Customer {
   _id: string;
@@ -35,9 +34,6 @@ export default function RequestsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [approvalCustomer, setApprovalCustomer] = useState<Customer | null>(
-    null
-  );
   const [rejectionCustomer, setRejectionCustomer] = useState<Customer | null>(
     null
   );
@@ -61,19 +57,18 @@ export default function RequestsPage() {
   };
 
   const handleApprove = async (customer: {
-    _id: string;
-    promoter: string;
-    seasons: string[];
+    customerId: string;
+    promoterId: string;
+    seasonId: string;
   }) => {
-    const customerId = customer._id.toString();
-    const promoterId = customer.promoter?.toString() || "";
-    const seasonId = customer.seasons[0]?.toString() || "";
-
-    console.log("Customer ID:", customerId);
-    console.log("Promoter ID:", promoterId);
-    console.log("Season ID:", seasonId);
-
-    await customerAPI.approve({ customerId, promoterId, seasonId });
+    try {
+      await customerAPI.approve(customer);
+      setCustomers((prev) => prev.filter((c) => c._id !== customer.customerId));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to approve customer"
+      );
+    }
   };
 
   const handleReject = async (customerId: string) => {
@@ -94,8 +89,7 @@ export default function RequestsPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 relative">
-      {/* ✅ Global loader overlay */}
+    <div className="space-y-6 p-4 relative mt-15 lg:mt-0">
       <Loader show={loading} />
 
       <Button type="button" variant="outline" onClick={() => router.back()}>
@@ -180,7 +174,6 @@ export default function RequestsPage() {
             <CustomerTable
               customers={customers}
               loading={loading}
-              onApprove={setApprovalCustomer}
               onReject={setRejectionCustomer}
               handleApprove={handleApprove}
               fetchNewCustomers={fetchNewCustomers}
@@ -197,7 +190,6 @@ export default function RequestsPage() {
         onReject={handleReject}
       />
 
-      {/* Error Message */}
       {error && (
         <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg">
           {error}

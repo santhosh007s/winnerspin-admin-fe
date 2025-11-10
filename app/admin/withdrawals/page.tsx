@@ -13,23 +13,12 @@ import { WithdrawalTable } from "@/components/withdrawal-table";
 import { WithdrawalStats } from "@/components/withdrawal-stats";
 import { RecentWithdrawals } from "@/components/recent-withdrawals";
 import { withdrawalAPI, promoterAPI } from "@/lib/api";
-import Loader from "@/components/loader"; // ✅ your global loader
-
-interface Withdrawal {
-  _id: string;
-  promoterId: string;
-  promoterName?: string;
-  promoterUsername?: string;
-  amount: number;
-  status: "pending" | "approved" | "rejected";
-  requestDate: string;
-  processedDate?: string;
-  notes?: string;
-}
+import Loader from "@/components/loader";
+import { Promoter, Withdrawal as GlobalWithdrawal } from "@/lib/types"; // import global types
 
 export default function WithdrawalsPage() {
-  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [withdrawals, setWithdrawals] = useState<GlobalWithdrawal[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,16 +37,27 @@ export default function WithdrawalsPage() {
         promoterAPI.getAll(season),
       ]);
 
-      const enrichedWithdrawals = (withdrawalsRes.withdraw || []).map(
-        (withdrawal: any) => {
-          const promoter = promotersRes.allPromoters?.find(
-            (p: any) => p._id === withdrawal.promoterId
-          );
+      const withdrawalsList: GlobalWithdrawal[] = Array.isArray(
+        withdrawalsRes.withdraw
+      )
+        ? withdrawalsRes.withdraw
+        : [];
+
+      const promotersList: Promoter[] = Array.isArray(promotersRes.allPromoters)
+        ? promotersRes.allPromoters
+        : [];
+
+      // Enrich withdrawals with promoter info
+      const enrichedWithdrawals: GlobalWithdrawal[] = withdrawalsList.map(
+        (w) => {
+          const promoter = promotersList.find((p) => p._id === w.promoterId);
           return {
-            ...withdrawal,
-            promoterName: promoter?.username || "Unknown",
-            promoterUsername: promoter?.username || "Unknown",
-            requestDate: withdrawal.createdAt || new Date().toISOString(),
+            ...w,
+            requester: {
+              _id: promoter?._id || w.promoterId,
+              userid: promoter?.userid,
+              username: promoter?.username,
+            },
           };
         }
       );
@@ -78,11 +78,7 @@ export default function WithdrawalsPage() {
       setWithdrawals((prev) =>
         prev.map((w) =>
           w._id === withdrawalId
-            ? {
-                ...w,
-                status: "approved" as const,
-                processedDate: new Date().toISOString(),
-              }
+            ? { ...w, status: "approved", updatedAt: new Date().toISOString() }
             : w
         )
       );
@@ -99,11 +95,7 @@ export default function WithdrawalsPage() {
       setWithdrawals((prev) =>
         prev.map((w) =>
           w._id === withdrawalId
-            ? {
-                ...w,
-                status: "rejected" as const,
-                processedDate: new Date().toISOString(),
-              }
+            ? { ...w, status: "rejected", updatedAt: new Date().toISOString() }
             : w
         )
       );
@@ -120,26 +112,23 @@ export default function WithdrawalsPage() {
   );
 
   return (
-    <div className="space-y-6 relative">
-      {/* ✅ Loader Overlay */}
+    <div className="space-y-6 relative mt-15 lg:mt-0">
       <Loader show={loading} />
 
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Withdrawals</h1>
+        <h1 className="text-3xl font-bold text-foreground">
+          Winnerspin Withdrawals
+        </h1>
         <p className="text-muted-foreground">
           Manage promoter withdrawal requests and payment processing
         </p>
       </div>
 
-      {/* Stats */}
       <WithdrawalStats withdrawals={withdrawals} loading={loading} />
 
-      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Withdrawals Table */}
         <div className="lg:col-span-2">
-          <Tabs defaultValue="pending" className="space-y-4">
+          <Tabs defaultValue="all" className="space-y-4">
             <TabsList>
               <TabsTrigger
                 value="all"
@@ -147,14 +136,12 @@ export default function WithdrawalsPage() {
               >
                 All Withdrawals ({withdrawals.length})
               </TabsTrigger>
-
               <TabsTrigger
                 value="pending"
                 className="data-[state=active]:bg-red-300"
               >
                 Pending Withdrawals ({pendingWithdrawals.length})
               </TabsTrigger>
-
               <TabsTrigger
                 value="processed"
                 className="data-[state=active]:bg-green-300"
@@ -220,7 +207,6 @@ export default function WithdrawalsPage() {
           </Tabs>
         </div>
 
-        {/* Recent Withdrawals Sidebar */}
         <div>
           <RecentWithdrawals
             withdrawals={pendingWithdrawals}

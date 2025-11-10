@@ -43,13 +43,15 @@ export function PromoterSelector({
     if (previousSeasonPromoters.length > 0 && selectedPromoters.length === 0) {
       onSelectionChange(previousSeasonPromoters);
     }
-  }, [previousSeasonPromoters, selectedPromoters.length, onSelectionChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previousSeasonPromoters, selectedPromoters.length]);
 
   const filteredPromoters = promoters.filter((promoter) => {
+    const q = searchTerm.toLowerCase().trim();
     const matchesSearch =
-      promoter.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promoter.userid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promoter.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      promoter.username?.toLowerCase().includes(q) ||
+      promoter.userid?.toLowerCase().includes(q) ||
+      promoter.email?.toLowerCase().includes(q);
 
     const matchesStatus = showOnlyApproved
       ? promoter.status === "approved"
@@ -99,6 +101,7 @@ export function PromoterSelector({
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4">
@@ -111,6 +114,7 @@ export function PromoterSelector({
               className="pl-10"
             />
           </div>
+
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleSelectAll}>
               Select All
@@ -135,7 +139,8 @@ export function PromoterSelector({
           <Checkbox
             id="approved-only"
             checked={showOnlyApproved}
-            onCheckedChange={setShowOnlyApproved}
+            // convert CheckedState ("true" | "false" | "indeterminate") into boolean
+            onCheckedChange={(checked) => setShowOnlyApproved(Boolean(checked))}
           />
           <label htmlFor="approved-only" className="text-sm font-medium">
             Show only approved promoters
@@ -159,7 +164,7 @@ export function PromoterSelector({
                     id={promoter._id}
                     checked={selectedPromoters.includes(promoter._id)}
                     onCheckedChange={(checked) =>
-                      handlePromoterToggle(promoter._id, checked as boolean)
+                      handlePromoterToggle(promoter._id, Boolean(checked))
                     }
                   />
                   <div className="flex-1 min-w-0">

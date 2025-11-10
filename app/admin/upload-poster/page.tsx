@@ -33,23 +33,24 @@ export default function PosterUploader() {
   };
 
   return (
-    <div className="relative w-full h-[80vh] flex flex-col items-center justify-center p-4">
+    <div className="relative w-full h-[80vh] flex flex-col items-center justify-center p-4 mt-15 lg:mt-0">
       {/* ✅ Global Loader */}
       <Loader show={uploading} />
 
       {/* Page Header */}
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Upload Posters</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Upload Posters - Winnerspin
+        </h1>
         <p className="text-gray-600">
-          This poster will be displayed in the promoter panel / customer panel /
-          landing page
+          This poster will be displayed in the promoter panel / customer panel
         </p>
       </div>
 
       {/* Upload Card */}
       <div className="max-w-md w-full p-6 bg-white shadow-md rounded-xl border border-gray-200">
         <h2 className="text-xl font-semibold mb-4 text-center">
-          Upload Poster
+          Poster Uploader
         </h2>
 
         {/* File Input */}

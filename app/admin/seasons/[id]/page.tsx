@@ -1,81 +1,120 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { seasonAPI, promoterAPI } from "@/lib/api"
-import { ArrowLeft, Edit, Calendar, DollarSign, Users, Clock } from "lucide-react"
-import { format } from "date-fns"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { seasonAPI, promoterAPI } from "@/lib/api";
+import {
+  ArrowLeft,
+  Edit,
+  Calendar,
+  DollarSign,
+  Users,
+  Clock,
+} from "lucide-react";
+import { format } from "date-fns";
 
 interface Season {
-  _id: string
-  Season: string
-  startDate: string
-  endDate: string
-  amount: number
-  approvedPromoters: string[]
-  createdAt: string
+  _id: string;
+  Season: string;
+  startDate: string;
+  endDate: string;
+  amount: number;
+  approvedPromoters: string[];
+  createdAt: string;
+}
+
+interface Promoter {
+  _id: string;
+  userid: string;
+  username: string;
+  email: string;
+  status: string;
 }
 
 export default function SeasonDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [season, setSeason] = useState<Season | null>(null)
-  const [promoters, setPromoters] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const [season, setSeason] = useState<Season | null>(null);
+  const [promoters, setPromoters] = useState<Promoter[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (params.id) {
-      fetchSeasonDetails(params.id as string)
-    }
-  }, [params.id])
+    const id = params?.id as string;
+    if (id) fetchSeasonDetails(id);
+  }, [params?.id]);
 
   const fetchSeasonDetails = async (id: string) => {
     try {
-      setLoading(true)
-      const [seasonResponse, promotersResponse] = await Promise.all([seasonAPI.getById(id), promoterAPI.getAll()])
+      setLoading(true);
 
-      setSeason(seasonResponse)
+      // ✅ FIXED: promoterAPI.getAll now called with required seasonId
+      const [seasonResponse, promotersResponse] = await Promise.all([
+        seasonAPI.getById(id),
+        promoterAPI.getAll(id),
+      ]);
 
-      // Filter promoters to only show those approved for this season
+      setSeason(seasonResponse);
+
+      // Filter promoters to only those approved for this season
+      const allPromoters = promotersResponse?.allPromoters ?? [];
       const approvedPromoters =
-        promotersResponse.allPromoters?.filter((p: any) => seasonResponse.approvedPromoters.includes(p._id)) || []
-      setPromoters(approvedPromoters)
+        allPromoters.filter((p: Promoter) =>
+          seasonResponse.approvedPromoters.includes(p._id)
+        ) || [];
+
+      setPromoters(approvedPromoters);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch season details")
+      console.error("Failed to fetch season details:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch season details"
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getSeasonStatus = (startDate: string, endDate: string) => {
-    const now = new Date()
-    const start = new Date(startDate)
-    const end = new Date(endDate)
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-    if (now < start) return "upcoming"
-    if (now > end) return "completed"
-    return "active"
-  }
+    if (now < start) return "upcoming";
+    if (now > end) return "completed";
+    return "active";
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "upcoming":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "completed":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -88,7 +127,7 @@ export default function SeasonDetailPage() {
           <div className="h-64 bg-muted animate-pulse rounded" />
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !season) {
@@ -102,10 +141,10 @@ export default function SeasonDetailPage() {
           <p className="text-muted-foreground">{error || "Season not found"}</p>
         </div>
       </div>
-    )
+    );
   }
 
-  const status = getSeasonStatus(season.startDate, season.endDate)
+  const status = getSeasonStatus(season.startDate, season.endDate);
 
   return (
     <div className="space-y-6">
@@ -117,7 +156,9 @@ export default function SeasonDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{season.Season}</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              {season.Season}
+            </h1>
             <p className="text-muted-foreground">Season Details</p>
           </div>
         </div>
@@ -143,30 +184,43 @@ export default function SeasonDetailPage() {
                   <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Start Date</p>
-                      <p className="font-medium">{format(new Date(season.startDate), "MMMM dd, yyyy")}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Start Date
+                      </p>
+                      <p className="font-medium">
+                        {format(new Date(season.startDate), "MMMM dd, yyyy")}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">End Date</p>
-                      <p className="font-medium">{format(new Date(season.endDate), "MMMM dd, yyyy")}</p>
+                      <p className="font-medium">
+                        {format(new Date(season.endDate), "MMMM dd, yyyy")}
+                      </p>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
-                    <Badge variant="secondary" className={getStatusColor(status)}>
+                    <Badge
+                      variant="secondary"
+                      className={getStatusColor(status)}
+                    >
                       {status}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Season Amount</p>
-                      <p className="font-medium text-lg">${season.amount.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Season Amount
+                      </p>
+                      <p className="font-medium text-lg">
+                        ₹{season.amount.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -178,11 +232,15 @@ export default function SeasonDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Approved Promoters</CardTitle>
-              <CardDescription>Promoters participating in this season</CardDescription>
+              <CardDescription>
+                Promoters participating in this season
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {promoters.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No promoters assigned to this season</p>
+                <p className="text-muted-foreground text-center py-8">
+                  No promoters assigned to this season
+                </p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -196,7 +254,9 @@ export default function SeasonDetailPage() {
                   <TableBody>
                     {promoters.map((promoter) => (
                       <TableRow key={promoter._id}>
-                        <TableCell className="font-medium">{promoter.userid}</TableCell>
+                        <TableCell className="font-medium">
+                          {promoter.userid}
+                        </TableCell>
                         <TableCell>{promoter.username}</TableCell>
                         <TableCell>{promoter.email}</TableCell>
                         <TableCell>
@@ -232,18 +292,26 @@ export default function SeasonDetailPage() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Approved Promoters</span>
                 </div>
-                <span className="font-bold text-lg">{season.approvedPromoters.length}</span>
+                <span className="font-bold text-lg">
+                  {season.approvedPromoters.length}
+                </span>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Season Amount</span>
-                <span className="font-medium">${season.amount.toLocaleString()}</span>
+                <span className="text-sm text-muted-foreground">
+                  Season Amount
+                </span>
+                <span className="font-medium">
+                  ₹{season.amount.toLocaleString()}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Duration</span>
                 <span className="font-medium">
                   {Math.ceil(
-                    (new Date(season.endDate).getTime() - new Date(season.startDate).getTime()) / (1000 * 60 * 60 * 24),
+                    (new Date(season.endDate).getTime() -
+                      new Date(season.startDate).getTime()) /
+                      (1000 * 60 * 60 * 24)
                   )}{" "}
                   days
                 </span>
@@ -256,15 +324,24 @@ export default function SeasonDetailPage() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start bg-transparent">
+              <Button
+                variant="outline"
+                className="w-full justify-start bg-transparent"
+              >
                 <Users className="mr-2 h-4 w-4" />
                 View Performance
               </Button>
-              <Button variant="outline" className="w-full justify-start bg-transparent">
+              <Button
+                variant="outline"
+                className="w-full justify-start bg-transparent"
+              >
                 <DollarSign className="mr-2 h-4 w-4" />
                 View Earnings
               </Button>
-              <Button variant="outline" className="w-full justify-start bg-transparent">
+              <Button
+                variant="outline"
+                className="w-full justify-start bg-transparent"
+              >
                 <Calendar className="mr-2 h-4 w-4" />
                 Export Report
               </Button>
@@ -273,5 +350,5 @@ export default function SeasonDetailPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

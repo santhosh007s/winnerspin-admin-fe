@@ -1,35 +1,65 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { SeasonForm } from "@/components/season-form"
-import { seasonAPI } from "@/lib/api"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { SeasonForm, SeasonFormData } from "@/components/season-form";
+import { seasonAPI, promoterAPI } from "@/lib/api";
 
 export default function EditSeasonPage() {
-  const params = useParams()
-  const [season, setSeason] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const params = useParams();
+  const seasonId = (params?.id as string) || "";
+  const [season, setSeason] = useState<Partial<SeasonFormData> | undefined>(
+    undefined
+  );
+  // const [promoters, setPromoters] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (params.id) {
-      fetchSeason(params.id as string)
-    }
-  }, [params.id])
+    if (seasonId) fetchSeasonAndPromoters(seasonId);
+  }, [seasonId]);
 
-  const fetchSeason = async (id: string) => {
+  const fetchSeasonAndPromoters = async (id: string) => {
     try {
-      const response = await seasonAPI.getById(id)
-      setSeason(response)
-    } catch (err) {
-      console.error("Failed to fetch season:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
+      setLoading(true);
+      setError(null);
 
-  const handleSubmit = async (data: any) => {
-    await seasonAPI.update(params.id as string, data)
-  }
+      // pass "id" to promoterAPI.getAll since it expects a seasonId (string)
+      const [seasonResponse ] = await Promise.all([
+        seasonAPI.getById(id),
+        promoterAPI.getAll(id),
+      ]);
+
+      // normalize possible shapes returned by your API
+      const normalizedSeason =
+        (seasonResponse &&
+          (seasonResponse.season ? seasonResponse : seasonResponse.season)) ||
+        seasonResponse ||
+        undefined;
+
+      setSeason(normalizedSeason ?? undefined);
+      // setPromoters(promotersResponse?.allPromoters ?? promotersResponse ?? []);
+    } catch (err) {
+      console.error("Failed to fetch season or promoters:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch season data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (data: SeasonFormData) => {
+    try {
+      setLoading(true);
+      await seasonAPI.update(seasonId, data);
+    } catch (err) {
+      console.error("Failed to update season:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -37,16 +67,25 @@ export default function EditSeasonPage() {
         <div className="h-8 bg-muted animate-pulse rounded w-1/3" />
         <div className="h-96 bg-muted animate-pulse rounded" />
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Edit Season</h1>
-        <p className="text-muted-foreground">Update season information and promoter assignments</p>
+        <p className="text-muted-foreground">
+          Update season information and promoter assignments
+        </p>
       </div>
+
+      {error && (
+        <div className="bg-destructive/10 text-destructive px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
       <SeasonForm initialData={season} onSubmit={handleSubmit} isEditing />
     </div>
-  )
+  );
 }

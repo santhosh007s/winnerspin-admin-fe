@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { promoterAPI } from "@/lib/api";
 import { PromoterTable } from "@/components/promoter-table";
-import { StatsCards } from "@/components/stats-cards";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Loader from "@/components/loader"; // ✅ use your global loader
@@ -17,7 +16,7 @@ type Promoter = {
   status: "approved" | "unapproved" | "inactive";
   isActive: boolean;
   balance: number;
-  customers: any[];
+  customers: string[];
 };
 
 export default function PromotersPage() {
@@ -45,7 +44,7 @@ export default function PromotersPage() {
       console.log("Promoters API response:", response);
 
       const normalize = (
-        list: any[],
+        list: Promoter[],
         status: "approved" | "unapproved" | "inactive",
         isActive: boolean
       ): Promoter[] =>
@@ -86,28 +85,30 @@ export default function PromotersPage() {
     fetchPromoters();
   }, [fetchPromoters]);
 
-  const stats = {
-    total:
-      approvedPromoters.length +
-      nonApprovedPromoters.length +
-      inactivePromoters.length,
-    approved: approvedPromoters.length,
-    unapproved: nonApprovedPromoters.length,
-    inactive: inactivePromoters.length,
-    allInactive: allInactivePromoters.length,
-  };
+  // const stats = {
+  //   total:
+  //     approvedPromoters.length +
+  //     nonApprovedPromoters.length +
+  //     inactivePromoters.length,
+  //   approved: approvedPromoters.length,
+  //   unapproved: nonApprovedPromoters.length,
+  //   inactive: inactivePromoters.length,
+  //   allInactive: allInactivePromoters.length,
+  // };
 
   return (
-    <div className="space-y-8 relative">
+    <div className="space-y-8 relative mt-15 lg:mt-0">
       {/* ✅ Loader Overlay */}
       <Loader show={loading} />
 
       {/* Header + Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Promoters</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Winnerspin Promoters
+          </h1>
           <p className="text-muted-foreground">
-            Manage promoters in your system
+            Manage promoters in your systems
           </p>
         </div>
 
@@ -118,7 +119,7 @@ export default function PromotersPage() {
 
       {/* Content */}
       <div className="space-y-10">
-        <StatsCards stats={stats} />
+        {/* <StatsCards stats={stats} /> */}
 
         {error ? (
           <div className="text-red-500">{error}</div>

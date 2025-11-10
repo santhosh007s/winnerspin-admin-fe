@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { StatsCards } from "@/components/stats-cards";
-import { RecentActivity } from "@/components/recent-activity";
+import { RecentActivity, Activity } from "@/components/recent-activity";
 import { QuickActions } from "@/components/quick-actions";
 import {
   Select,
@@ -12,40 +12,79 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  dashboardAPI,
   seasonAPI,
   customerAPI,
   withdrawalAPI,
   adminStatsAPI,
 } from "@/lib/api";
-import Loader from "@/components/loader"
+import Loader from "@/components/loader";
+
 const SEASON_STORAGE_KEY = "selectedSeason";
+
+interface Customer {
+  _id: string;
+  username: string;
+  createdAt: string;
+  status: string;
+}
+
+interface Withdrawal {
+  _id: string;
+  amount: number;
+  createdAt: string;
+  status: string;
+  customer?: {
+    username?: string;
+  };
+}
+
+interface Stats {
+  totalPromoters: number;
+  totalCustomers: number;
+  netAmount: number;
+}
+
+interface Season {
+  _id: string;
+  season: string;
+}
 
 export default function DashboardPage() {
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); // 👈 default true (initially loading)
-  const [stats, setStats] = useState<any>({
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({
     totalPromoters: 0,
     totalCustomers: 0,
     netAmount: 0,
   });
-  const [activities, setActivities] = useState<any[]>([]);
-  const [seasons, setSeasons] = useState<any[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   const [seasonsLoading, setSeasonsLoading] = useState(false);
 
-  // 🧠 Load saved season
+  // ✅ Normalize status safely
+  const normalizeStatus = (
+    status?: string
+  ): "pending" | "approved" | "rejected" | undefined => {
+    if (!status) return undefined;
+    const lower = status.toLowerCase();
+    if (["pending", "approved", "rejected"].includes(lower))
+      return lower as "pending" | "approved" | "rejected";
+    return undefined;
+  };
+
+  // Load saved season
   useEffect(() => {
     const saved = localStorage.getItem(SEASON_STORAGE_KEY);
     if (saved) setSelectedSeason(saved);
   }, []);
 
-  // 🌀 Fetch all seasons
+  // Fetch all seasons
   useEffect(() => {
     const fetchSeasons = async () => {
       setSeasonsLoading(true);
       try {
         const data = await seasonAPI.getAll();
-        const allSeasons = data?.seasons ?? [];
+        const allSeasons = (data?.seasons ?? []) as Season[];
         setSeasons(allSeasons);
 
         if (!selectedSeason && data?.curSeason?._id) {
@@ -62,27 +101,27 @@ export default function DashboardPage() {
     fetchSeasons();
   }, [selectedSeason]);
 
-  // 📊 Fetch dashboard data when season changes
+  // Fetch dashboard data when season changes
   useEffect(() => {
     if (!selectedSeason) return;
 
     const fetchDashboardData = async () => {
-      setLoading(true); // show loader
+      setLoading(true);
       try {
         const statsRes = await adminStatsAPI.getAdminStats(selectedSeason);
+
         setStats({
           totalPromoters: statsRes.totalPromoters ?? 0,
           totalCustomers: statsRes.totalCustomers ?? 0,
           netAmount: statsRes.totalAmount ?? 0,
         });
 
-        // Parallel fetch
         const [customers, withdrawals] = await Promise.all([
-          customerAPI.getNew(),
-          withdrawalAPI.getAll(selectedSeason),
+          customerAPI.getNew() as Promise<Customer[]>,
+          withdrawalAPI.getAll(selectedSeason) as Promise<Withdrawal[]>,
         ]);
 
-        const activityList: any[] = [];
+        const activityList: Activity[] = [];
 
         customers?.forEach((c) => {
           activityList.push({
@@ -90,7 +129,7 @@ export default function DashboardPage() {
             type: "customer_approval",
             description: `New customer request from ${c.username}`,
             timestamp: c.createdAt,
-            status: c.status,
+            status: normalizeStatus(c.status),
           });
         });
 
@@ -98,9 +137,11 @@ export default function DashboardPage() {
           activityList.push({
             id: w._id,
             type: "withdrawal_request",
-            description: `Withdrawal request of ₹${w.amount} by ${w.customer?.username}`,
+            description: `Withdrawal request of ₹${w.amount} by ${
+              w.customer?.username || "Unknown"
+            }`,
             timestamp: w.createdAt,
-            status: w.status,
+            status: normalizeStatus(w.status),
           });
         });
 
@@ -112,7 +153,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
-        setLoading(false); // hide loader
+        setLoading(false);
       }
     };
 
@@ -126,15 +167,15 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* 🌟 Global loader while fetching all data */}
       <Loader show={loading || seasonsLoading} />
 
-      {/* Main content */}
       {!loading && (
-        <div className="space-y-6">
+        <div className="space-y-6 mt-15 lg:mt-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                Winnerspin Admin Dashboard
+              </h1>
               <p className="text-muted-foreground">Overview of the system</p>
             </div>
 

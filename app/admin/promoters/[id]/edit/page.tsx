@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { PromoterForm } from "@/components/promoter-form";
+import { PromoterForm, PromoterFormData } from "@/components/promoter-form";
 import { promoterAPI } from "@/lib/api";
+
+interface PromoterResponse {
+  promoter?: PromoterFormData;
+}
 
 export default function EditPromoterPage() {
   const params = useParams();
-  const [promoter, setPromoter] = useState<Partial<any> | undefined>(undefined);
+  const [promoter, setPromoter] = useState<Partial<PromoterFormData> | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
 
@@ -24,21 +30,28 @@ export default function EditPromoterPage() {
 
   const fetchPromoter = async (id: string, seasonId: string) => {
     try {
-      const response = await promoterAPI.getById(id, { seasonId });
-      const raw = (response as any)?.promoter ?? response;
+      const response: PromoterResponse | PromoterFormData =
+        await promoterAPI.getById(id, { seasonId });
 
-      setPromoter({
+      const raw =
+        "promoter" in response && response.promoter
+          ? response.promoter
+          : (response as PromoterFormData);
+
+      const formatted: Partial<PromoterFormData> = {
         userid: String(raw?.userid ?? ""),
         username: String(raw?.username ?? ""),
         email: String(raw?.email ?? ""),
         mobNo: String(raw?.mobNo ?? ""),
         status: raw?.status === "approved" ? "approved" : "unapproved",
-        isActive: raw?.isActive ?? true,
-        address: raw?.address ?? "",
-        city: raw?.city ?? "",
-        state: raw?.state ?? "",
-        pincode: raw?.pincode ?? "",
-      });
+        isActive: Boolean(raw?.isActive ?? true),
+        address: String(raw?.address ?? ""),
+        city: String(raw?.city ?? ""),
+        state: String(raw?.state ?? ""),
+        pincode: String(raw?.pincode ?? ""),
+      };
+
+      setPromoter(formatted);
     } catch (err) {
       console.error("Failed to fetch promoter:", err);
     } finally {
@@ -46,27 +59,18 @@ export default function EditPromoterPage() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: PromoterFormData) => {
     if (!selectedSeason) return console.error("No season selected");
 
     await promoterAPI.updateProfile(params.id as string, {
-      userid: data.userid,
-      username: data.username,
-      email: data.email,
-      mobNo: data.mobNo,
-      status: data.status,
-      isActive: data.isActive,
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      pincode: data.pincode,
+      ...data,
       selectedSeason,
     });
   };
 
-  if (loading) {
+  if (loading || !promoter) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 mt-15 lg:mt-0">
         <div className="h-8 bg-muted animate-pulse rounded w-1/3" />
         <div className="h-96 bg-muted animate-pulse rounded" />
       </div>
@@ -79,6 +83,7 @@ export default function EditPromoterPage() {
         <h1 className="text-3xl font-bold text-foreground">Edit Promoter</h1>
         <p className="text-muted-foreground">Update promoter information</p>
       </div>
+
       <PromoterForm initialData={promoter} onSubmit={handleSubmit} isEditing />
     </div>
   );

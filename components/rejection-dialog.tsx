@@ -49,7 +49,7 @@ export function RejectionDialog({ customer, open, onOpenChange, onReject }: Reje
         <AlertDialogHeader>
           <AlertDialogTitle>Reject Customer</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to reject customer "{customer?.username}"? This action cannot be undone and the
+            `Are you sure you want to reject customer ${customer?.username} This 
             customer will be removed from the system.
           </AlertDialogDescription>
         </AlertDialogHeader>

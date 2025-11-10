@@ -116,7 +116,7 @@ export default function PromoterDetailPage() {
 
   if (error || !promoter) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 mt-15 lg:mt-0">
         <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
