@@ -45,7 +45,8 @@ export type ExtendedWithdrawal = Withdrawal & {
     userid?: string;
     username?: string;
   };
-  requestDate?: string; // frontend-safe optional date
+  approvedAt?: string;
+  requestDate?: string;
 };
 
 interface WithdrawalTableProps {
@@ -95,6 +96,18 @@ export function WithdrawalTable({
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const getProcessedDate = (w: ExtendedWithdrawal) => {
+    if (w.status === "approved") {
+      return w.approvedAt
+        ? new Date(w.approvedAt).toLocaleDateString("en-IN", {
+            dateStyle: "medium",
+          })
+        : "Not approved yet";
+    }
+    if (w.status === "rejected") return "Rejected";
+    return "Pending approval";
   };
 
   const handleAction = () => {
@@ -179,7 +192,7 @@ export function WithdrawalTable({
                         {w.requester?.username || "Unknown"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {w.requester?.userid || w.promoterId}
+                        {w.requester?.userid || "N/A"}
                       </p>
                     </div>
                   </TableCell>
@@ -193,15 +206,14 @@ export function WithdrawalTable({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {new Date(
-                      w.requestDate ?? w.createdAt
-                    ).toLocaleDateString()}
+                    {new Date(w.requestDate ?? w.createdAt).toLocaleDateString(
+                      "en-IN",
+                      {
+                        dateStyle: "medium",
+                      }
+                    )}
                   </TableCell>
-                  <TableCell>
-                    {w.updatedAt
-                      ? new Date(w.updatedAt).toLocaleDateString()
-                      : "N/A"}
-                  </TableCell>
+                  <TableCell>{getProcessedDate(w)}</TableCell>
                   <TableCell className="text-right">
                     {w.status === "pending" ? (
                       <DropdownMenu>
@@ -236,8 +248,8 @@ export function WithdrawalTable({
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <span className="text-sm text-muted-foreground">
-                        {w.status === "approved" ? "Approved" : "Rejected"}
+                      <span className="text-sm text-muted-foreground capitalize">
+                        {w.status}
                       </span>
                     )}
                   </TableCell>

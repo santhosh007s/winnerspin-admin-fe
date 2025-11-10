@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
+  CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { repaymentAPI, promoterAPI } from "@/lib/api";
 import { RepaymentTable } from "@/components/repayment-table";
 import { RecentRepayments } from "@/components/recent-repayments";
-import Loader from "@/components/loader"; // ✅ global loader
+import Loader from "@/components/loader";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 interface Promoter {
   _id: string;
@@ -53,6 +55,7 @@ export default function RepaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingIds, setApprovingIds] = useState<string[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   const seasonId =
     typeof window !== "undefined"
@@ -61,8 +64,7 @@ export default function RepaymentsPage() {
 
   useEffect(() => {
     fetchRepayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, );
 
   const fetchRepayments = async () => {
     try {
@@ -116,7 +118,65 @@ export default function RepaymentsPage() {
 
   const pendingRepayments = repayments.filter((r) => !r.isVerified);
   const processedRepayments = repayments.filter((r) => r.isVerified);
-  const showLoader = loading || approvingIds.length > 0;
+  const showLoader = loading || approvingIds.length > 0 || exporting;
+
+  // ✅ Prepare export rows (with Status column)
+  const rowsForExport = useMemo(() => {
+    return repayments.map((r) => {
+      const customerName = r.customer?.username ?? "Unknown";
+      const card = r.customer?.cardNo ?? "N/A";
+      const customerCol = `${customerName} (${card})`;
+
+      const season = r.season?.season ?? "N/A";
+      const installment = r.installmentNo ?? "";
+
+      const amountNum = Number.isFinite(Number(r.amount))
+        ? Number(r.amount)
+        : parseFloat(String(r.amount)) || 0;
+      const amountFormatted = `₹${amountNum.toLocaleString()}`;
+
+      const status = r.isVerified ? "Approved" : "Pending";
+
+      return {
+        "Customer Name & Card No": customerCol,
+        Season: season,
+        Installment: installment,
+        Amount: amountFormatted,
+        Status: status,
+      };
+    });
+  }, [repayments]);
+
+  const handleExportExcel = async () => {
+    try {
+      if (repayments.length === 0) {
+        alert("No repayments to export");
+        return;
+      }
+      setExporting(true);
+      const XLSX = await import("xlsx");
+
+      const ws = XLSX.utils.json_to_sheet(rowsForExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Repayments");
+
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const filename = `repayments_${now.getFullYear()}-${pad(
+        now.getMonth() + 1
+      )}-${pad(now.getDate())}_${pad(now.getHours())}${pad(
+        now.getMinutes()
+      )}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Failed to export repayments to Excel";
+      alert(msg);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="relative space-y-6 px-4 sm:px-6 lg:px-8 py-6 mt-15 lg:mt-0">
@@ -124,13 +184,31 @@ export default function RepaymentsPage() {
       <Loader show={showLoader} />
 
       {/* Header */}
-      <header className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          Winnerspin Repayments
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
-          Manage customer repayments and promoter commission approvals
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Winnerspin Repayments
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
+            Manage customer repayments and promoter commission approvals
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={exporting || repayments.length === 0}
+            title={
+              repayments.length === 0
+                ? "No data to export"
+                : "Export repayments to Excel"
+            }
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exporting ? "Exporting..." : "Export Excel"}
+          </Button>
+        </div>
       </header>
 
       {/* Main Content */}

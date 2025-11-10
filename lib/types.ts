@@ -3,7 +3,7 @@
 // =============================
 export interface Season {
   _id: string;
-  Season?: string;
+  season?: string; // normalized lowercase key
   amount: number;
   isActive: boolean;
   createdAt: string;
@@ -31,7 +31,7 @@ export interface Promoter {
 // 🧩 TRANSACTION INTERFACE
 // =============================
 export interface Transaction {
-  id: string; // frontend ID key (for React)
+  id: string;
   _id: string;
   type: "credit" | "debit";
   amount: number;
@@ -43,7 +43,7 @@ export interface Transaction {
   promoterName?: string;
   customerId?: string;
   customerName?: string;
-  date: string; // display / sorting
+  date: string;
   status: "pending" | "completed" | "failed";
   transactionType?:
     | "customer-payment"
@@ -59,7 +59,6 @@ export interface Transaction {
 // =============================
 // 🧩 WITHDRAWAL INTERFACE
 // =============================
-// (merged both duplicate definitions and made optional fields consistent)
 export interface Withdrawal {
   _id: string;
   promoterId: string;
@@ -72,6 +71,9 @@ export interface Withdrawal {
   status: "pending" | "approved" | "rejected";
   createdAt: string;
   updatedAt: string;
+  requestDate?: string;
+  approvedAt?: string;
+  promoterName?: string;
   processedDate?: string;
   notes?: string;
   promoterUsername?: string;
@@ -89,7 +91,7 @@ export interface Repayment {
   };
   season: {
     _id: string;
-    Season: string;
+    season: string;
   };
   amount: number;
   status: "pending" | "approved" | "rejected";
@@ -104,26 +106,33 @@ export interface Repayment {
 }
 
 // =============================
-// 🧩 CUSTOMER INTERFACE
+// 🧩 CUSTOMER INTERFACE (Unified)
 // =============================
 export interface Customer {
   _id: string;
-  customerid: string;
+  customerid?: string;
   username: string;
   email: string;
-  mobNo: string;
-  promoterId: string | null;
-  seasonId: string | null;
-  isApproved: boolean;
+  mobNo?: string;
+  cardNo?: string;
+
+  // ✅ Make this REQUIRED (not optional)
+  status: "pending" | "approved" | "rejected";
+
+  promoterId?: string | null;
+  promoterName?: string;
+  seasonId?: string | null;
+  seasonName?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  promoter?: Promoter;
+  seasons?: Season[];
+  isApproved?: boolean;
 }
 
 // =============================
 // 🧩 OPTIONAL FRONTEND EXTENSIONS
 // =============================
-// Used for table & UI mapping safety (optional fields, added names)
-
 export interface ExtendedWithdrawal extends Omit<Withdrawal, "requester"> {
   requester: {
     _id?: string;

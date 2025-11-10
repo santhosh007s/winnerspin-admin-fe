@@ -32,10 +32,12 @@ import { MoreHorizontal, Eye, Search } from "lucide-react";
 // TYPES
 // ----------------------
 interface Season {
+  _id: string;
   season?: string;
 }
 
 interface Promoter {
+_id: string;
   username?: string;
 }
 
@@ -253,13 +255,14 @@ export function CustomerTable({
                                 if (!handleApprove || approvingId) return;
                                 setApprovingId(customer._id);
                                 try {
-                                  await handleApprove({
-                                    customerId: customer._id.toString(),
-                                    promoterId:
-                                      customer.promoterId?.toString() || "",
-                                    seasonId:
-                                      customer.seasonId?.toString() || "",
-                                  });
+                               await handleApprove({
+                                 customerId: customer._id?.toString() || "",
+                                 promoterId:
+                                   customer.promoter?._id?.toString() || "",
+                                 seasonId:
+                                   customer.seasons?.[0]?._id?.toString() || "",
+                               });
+
                                 } finally {
                                   setApprovingId(null);
                                   if (fetchNewCustomers) {

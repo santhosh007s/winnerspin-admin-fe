@@ -1,3 +1,4 @@
+//
 "use client";
 
 import { useState } from "react";
@@ -33,7 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MoreHorizontal, Eye, Edit, Search } from "lucide-react";
 import { promoterAPI } from "@/lib/api";
 
-interface Promoter {
+export interface Promoter {
   _id: string;
   userid?: string;
   username: string;
@@ -42,7 +43,7 @@ interface Promoter {
   status: "approved" | "unapproved" | "inactive";
   isActive: boolean;
   balance?: number;
-  customers?: unknown[];
+  customers?: string[];
 }
 
 interface PromoterTableProps {
@@ -68,35 +69,34 @@ export function PromoterTable({
     "all" | "approved" | "unapproved" | "inactive"
   >("all");
 
-  // Merge all promoters safely
-  const allPromoters = [
+  const allPromoters: Promoter[] = [
     ...(approvedPromoters || []),
     ...(nonApprovedPromoters || []),
     ...(inactivePromoters || []),
   ].map((p) => ({
     balance: 0,
     customers: [],
-    userid: p.userid ?? p.username, // fallback if userid missing
+    userid: p.userid ?? p.username,
     ...p,
   }));
 
-  // Apply tab filter
-  const tabFilteredPromoters =
+  const tabFilteredPromoters: Promoter[] =
     tab === "approved"
       ? allPromoters.filter((p) => p.status === "approved" && p.isActive)
       : tab === "unapproved"
       ? allPromoters.filter((p) => p.status !== "approved" && p.isActive)
       : tab === "inactive"
-      ? allInactivePromoters
+      ? (allInactivePromoters as Promoter[])
       : allPromoters;
 
-  // Apply search filter
-  const filteredPromoters = tabFilteredPromoters.filter(
-    (p) =>
-      p.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.userid?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPromoters = tabFilteredPromoters.filter((p) => {
+    const s = searchTerm.toLowerCase();
+    return (
+      (p.username ?? "").toLowerCase().includes(s) ||
+      (p.email ?? "").toLowerCase().includes(s) ||
+      (p.userid ?? "").toLowerCase().includes(s)
+    );
+  });
 
   const getStatusColor = (promoter: Promoter) => {
     if (!promoter.isActive || promoter.status === "inactive")
@@ -114,7 +114,6 @@ export function PromoterTable({
   const handleDelete = async () => {
     if (deletePromoter) {
       try {
-        // ✅ toggleStatus expects (id: string, isActive: boolean)
         await promoterAPI.toggleStatus(
           deletePromoter._id,
           !deletePromoter.isActive
@@ -142,7 +141,6 @@ export function PromoterTable({
 
   return (
     <div className="space-y-4">
-      {/* Tabs for status filter */}
       <Tabs
         value={tab}
         onValueChange={(v: string) =>
@@ -157,7 +155,6 @@ export function PromoterTable({
         </TabsList>
       </Tabs>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
@@ -168,7 +165,6 @@ export function PromoterTable({
         />
       </div>
 
-      {/* Table */}
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -236,7 +232,7 @@ export function PromoterTable({
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        {/* Uncomment to use delete confirmation */}
+                        {/* Deactivate with confirm dialog if needed */}
                         {/* <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => setDeletePromoter(promoter)}
@@ -254,7 +250,6 @@ export function PromoterTable({
         </Table>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!deletePromoter}
         onOpenChange={() => setDeletePromoter(null)}
