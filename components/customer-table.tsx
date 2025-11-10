@@ -47,9 +47,9 @@ interface Customer {
   email: string;
   cardNo?: string;
   status: "pending" | "approved" | "rejected";
-  promoterId?: string;
+  // promoterId?: string;
   promoterName?: string;
-  seasonId?: string;
+  // seasonId?: string;
   seasonName?: string;
   createdAt: string;
   promoter?: Promoter;

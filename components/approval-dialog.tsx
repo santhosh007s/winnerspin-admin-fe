@@ -161,7 +161,7 @@ export function ApprovalDialog({
                   <SelectItem value="">Choose a season</SelectItem>
                   {seasons.map((season) => (
                     <SelectItem key={season._id} value={season._id}>
-                      {season.Season ?? "Season"} (₹
+                      {season.season ?? "Season"} (₹
                       {season.amount?.toLocaleString?.() ?? "0"})
                     </SelectItem>
                   ))}
