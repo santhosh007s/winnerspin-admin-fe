@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/admin";
+  process.env.NEXT_PUBLIC_API_URL || "http://65.1.111.185/admin";
 
 export const apiRequest = async (
   endpoint: string,
@@ -117,11 +117,15 @@ function getSeasonId(): string | null {
 export const customerAPI = {
   getAll: () => {
     const seasonId = getSeasonId();
-    return apiRequest(`/all-customers${seasonId ? `?seasonId=${seasonId}` : ""}`);
+    return apiRequest(
+      `/all-customers${seasonId ? `?seasonId=${seasonId}` : ""}`
+    );
   },
   getNew: () => {
     const seasonId = getSeasonId();
-    return apiRequest(`/new-customers${seasonId ? `?seasonId=${seasonId}` : ""}`);
+    return apiRequest(
+      `/new-customers${seasonId ? `?seasonId=${seasonId}` : ""}`
+    );
   },
   approve: ({
     customerId,
