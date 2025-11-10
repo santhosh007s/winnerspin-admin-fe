@@ -396,8 +396,8 @@ export default function PromotersPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchPromoters = useCallback(async () => {
+  
+const fetchPromoters = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -427,31 +427,23 @@ export default function PromotersPage() {
             : [],
         }));
 
-      setApprovedPromoters(
-        normalize(response.approvedPromoters ?? [], "approved", true)
-      );
-      setNonApprovedPromoters(
-        normalize(response.nonApprovedPromoters ?? [], "unapproved", true)
-      );
-      setInactivePromoters(
-        normalize(response.inactivePromoters ?? [], "inactive", false)
-      );
-      setAllInactivePromoters(
-        normalize(response.allInactivePromoters ?? [], "inactive", true)
-      );
+      setApprovedPromoters(normalize(response.approvedPromoters ?? [], "approved", true));
+      setNonApprovedPromoters(normalize(response.nonApprovedPromoters ?? [], "unapproved", true));
+      setInactivePromoters(normalize(response.inactivePromoters ?? [], "inactive", false));
+      setAllInactivePromoters(normalize(response.allInactivePromoters ?? [], "inactive", true));
+
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch promoters"
-      );
+      setError(err instanceof Error ? err.message : "Failed to fetch promoters");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // ✅ Dependencies for fetchPromoters (none here)
 
+  // ✅ Effect that runs only once and calls the stable function
   useEffect(() => {
     fetchPromoters();
   }, [fetchPromoters]);
-
+  
   // Merge all unique promoters for export
   const allForExport: Promoter[] = useMemo(() => {
     const map = new Map<string, Promoter>();

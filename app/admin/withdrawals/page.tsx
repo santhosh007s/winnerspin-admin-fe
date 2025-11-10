@@ -26,32 +26,29 @@ export default function WithdrawalsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchWithdrawals = async () => {
+      try {
+        setLoading(true);
+
+        const season = localStorage.getItem("selectedSeason");
+        if (!season) throw new Error("No season selected in local storage");
+
+        const withdrawalsRes = await withdrawalAPI.getAll(season);
+        const withdrawalsList: GlobalWithdrawal[] = Array.isArray(withdrawalsRes.withdraw)
+          ? withdrawalsRes.withdraw
+          : [];
+
+        setWithdrawals(withdrawalsList);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch withdrawals");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchWithdrawals();
   }, []);
 
-  const fetchWithdrawals = async () => {
-    try {
-      setLoading(true);
-
-      const season = localStorage.getItem("selectedSeason");
-      if (!season) throw new Error("No season selected in local storage");
-
-      const withdrawalsRes = await withdrawalAPI.getAll(season);
-      const withdrawalsList: GlobalWithdrawal[] = Array.isArray(
-        withdrawalsRes.withdraw
-      )
-        ? withdrawalsRes.withdraw
-        : [];
-
-      setWithdrawals(withdrawalsList);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch withdrawals"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleApprove = async (withdrawalId: string) => {
     try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -62,11 +62,7 @@ export default function RepaymentsPage() {
       ? localStorage.getItem("selectedSeason") ?? ""
       : "";
 
-  useEffect(() => {
-    fetchRepayments();
-  }, );
-
-  const fetchRepayments = async () => {
+  const fetchRepayments = useCallback(async () => {
     try {
       setLoading(true);
       const validSeasonId = seasonId || "";
@@ -99,7 +95,13 @@ export default function RepaymentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [seasonId]); // ✅ dependency only on seasonId
+
+  // ✅ Effect now runs once on mount and whenever seasonId changes
+  useEffect(() => {
+    fetchRepayments();
+  }, [fetchRepayments]);
+
 
   const handleApprove = async (installmentId: string, promoterId: string) => {
     setApprovingIds((prev) => [...prev, installmentId]);

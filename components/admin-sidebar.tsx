@@ -233,7 +233,7 @@ export function AdminSidebar() {
       <div className="p-4 border-t border-border">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 bg-red-600 text-black hover:bg-red-600 hover:text-black hover:scale-105"
+          className="w-full justify-start gap-3 bg-red-500/80 text-black hover:bg-red-500 hover:text-black hover:scale-105"
           onClick={() => setShowLogoutConfirm(true)}
         >
           <LogOut className="h-4 w-4" />
