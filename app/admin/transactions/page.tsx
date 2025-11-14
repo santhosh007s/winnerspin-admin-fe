@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -40,6 +39,7 @@ interface ServerWithdrawal {
   amount: number | string;
   requester: { username?: string; _id: string; userid?: string };
   createdAt: string;
+  approvedAt?: string;
   status?: string;
   season?: { _id: string; season: string };
 }
@@ -57,7 +57,9 @@ export default function TransactionsPage() {
       ? localStorage.getItem("selectedSeason") || ""
       : "";
 
-    // ✅ useCallback keeps fetchData stable
+  // ===============================
+  // 🚀 FETCH DATA (with correct sorting)
+  // ===============================
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -68,10 +70,10 @@ export default function TransactionsPage() {
         promoterAPI.getAll(seasonId),
       ]);
 
-      // Map transactions
       const serverTransactions = transactionRes.transactions ?? [];
       const serverWithdrawals = transactionRes.withdrawals ?? [];
 
+      // ⭐ CREDIT TRANSACTIONS (customer → admin/promoter)
       const mappedCredits: Transaction[] = serverTransactions.map(
         (tx: ServerTransaction) => ({
           id: tx._id,
@@ -87,26 +89,29 @@ export default function TransactionsPage() {
           promoterName: tx.promoter?.username ?? tx.promoter?.userid,
           customerId: tx.customer?._id,
           customerName: tx.customer?.username,
-          date: tx.createdAt,
+          date: tx.createdAt, // correct
           status: "completed",
         })
       );
 
+      // ⭐ DEBIT TRANSACTIONS (withdrawals)
       const mappedDebits: Transaction[] = serverWithdrawals.map(
         (w: ServerWithdrawal) => ({
           id: w._id,
           _id: w._id,
           type: "debit",
-          amount: typeof w.amount === "string" ? parseFloat(w.amount) : w.amount,
+          amount:
+            typeof w.amount === "string" ? parseFloat(w.amount) : w.amount,
           from: "Admin",
           to: w.requester?.username ?? w.requester?.userid ?? "Promoter",
           seasonId: w.season?._id ?? "",
           seasonName: w.season?.season,
           promoterId: w.requester?._id,
           promoterName: w.requester?.username ?? w.requester?.userid,
-          customerId: undefined,
-          customerName: undefined,
-          date: w.createdAt,
+
+          // ⭐ MOST IMPORTANT SORTING FIX
+          date: w.approvedAt ?? w.createdAt,
+
           status:
             w.status === "approved"
               ? "completed"
@@ -116,6 +121,7 @@ export default function TransactionsPage() {
         })
       );
 
+      // ⭐ FINAL SORT → REAL latest-first across credits + withdrawals
       const combined: Transaction[] = [...mappedCredits, ...mappedDebits].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
@@ -143,14 +149,15 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [seasonId]); // ✅ seasonId is a dependency
+  }, [seasonId]);
 
-  // ✅ useEffect runs once (and when seasonId changes)
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // ✅ Export only visible table data
+  // ===============================
+  // 📤 EXPORT EXCEL
+  // ===============================
   const rowsForExport = useMemo(() => {
     return transactions.map((t) => ({
       "Transaction ID": t._id,
@@ -201,7 +208,7 @@ export default function TransactionsPage() {
     }
   };
 
-  const totalCount = transactions.length;
+  // counts
   const creditTransactions = transactions.filter((t) => t.type === "credit");
   const debitTransactions = transactions.filter((t) => t.type === "debit");
   const creditedToAdminCount = creditTransactions.filter(
@@ -215,7 +222,7 @@ export default function TransactionsPage() {
     <div className="space-y-6 relative mt-15 lg:mt-0">
       <Loader show={loading} />
 
-      {/* Header + Export Button */}
+      {/* Header + Export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
@@ -228,11 +235,6 @@ export default function TransactionsPage() {
           variant="outline"
           onClick={handleExportExcel}
           disabled={exporting || transactions.length === 0}
-          title={
-            transactions.length === 0
-              ? "No data to export"
-              : "Export transactions to Excel"
-          }
         >
           <Download className="mr-2 h-4 w-4" />
           {exporting ? "Exporting..." : "Export Excel"}
@@ -245,14 +247,12 @@ export default function TransactionsPage() {
         <div className="lg:col-span-2">
           <Tabs defaultValue="all" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="all">
-                All Transactions ({totalCount})
-              </TabsTrigger>
+              <TabsTrigger value="all">All ({transactions.length})</TabsTrigger>
               <TabsTrigger value="admin">
-                Credited to Admin ({creditedToAdminCount})
+                Admin Credits ({creditedToAdminCount})
               </TabsTrigger>
               <TabsTrigger value="promoter">
-                Credited to Promoter ({creditedToPromoterCount})
+                Promoter Credits ({creditedToPromoterCount})
               </TabsTrigger>
               <TabsTrigger value="debits">
                 Debits ({debitTransactions.length})
@@ -323,9 +323,9 @@ export default function TransactionsPage() {
             <TabsContent value="debits">
               <Card>
                 <CardHeader>
-                  <CardTitle>Debits (Withdrawals)</CardTitle>
+                  <CardTitle>Withdrawals (Debits)</CardTitle>
                   <CardDescription>
-                    All withdrawal payouts (debited from admin)
+                    All approved/pending/failed withdrawals
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

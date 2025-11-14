@@ -9,6 +9,18 @@ export interface Season {
   createdAt: string;
   updatedAt: string;
 }
+export interface Poster {
+  _id: string;
+  url: string;
+  name: string;
+  audience: "promoter" | "customer";
+  season?: {
+    _id: string;
+    season: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 // =============================
 // 🧩 PROMOTER INTERFACE
@@ -62,22 +74,30 @@ export interface Transaction {
 export interface Withdrawal {
   _id: string;
   promoterId: string;
+
   requester: {
     _id: string;
     userid?: string;
     username?: string;
   };
+
   amount: number;
+
   status: "pending" | "approved" | "rejected";
+
   createdAt: string;
   updatedAt: string;
-  requestDate?: string;
-  approvedAt?: string;
-  promoterName?: string;
-  processedDate?: string;
+
+  requestDate?: string; // custom field BE may send
+  approvedAt?: string; // BE sends when approved
+
+  promoterName?: string; // fallback BE value
+  promoterUsername?: string; // optional fallback
   notes?: string;
-  promoterUsername?: string;
+
+  processedDate?: string; // optional BE value if you want to send
 }
+
 
 // =============================
 // 🧩 REPAYMENT INTERFACE
@@ -145,4 +165,52 @@ export interface ExtendedTransaction extends Transaction {
   seasonName?: string;
   promoterName?: string;
   customerName?: string;
+}
+
+export interface StatsResponse {
+  totalPromoters: number;
+  totalCustomers: number;
+  totalWithdrawals: number;
+  totalIncome: number;
+}
+
+export interface TransactionUser {
+  _id: string;
+  username: string;
+}
+
+export interface TransactionItem {
+  _id: string;
+  amount: number;
+  to: "admin" | "promoter";
+  createdAt: string;
+  customer?: TransactionUser;
+  promoter?: TransactionUser;
+}
+
+export interface CustomerItem {
+  _id: string;
+  username: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface WithdrawalItem {
+  _id: string;
+  amount: string;
+  createdAt: string;
+  status: string;
+  requester?: TransactionUser;
+}
+
+export interface DashboardRecent {
+  transactions: TransactionItem[];
+  customers: CustomerItem[];
+  withdrawals: WithdrawalItem[];
+}
+
+export interface DashboardApiResponse {
+  success: boolean;
+  stats: StatsResponse;
+  recent: DashboardRecent;
 }
