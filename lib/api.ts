@@ -319,7 +319,7 @@
 // ===========================
 // BASE CONFIG
 // ===========================
-export const API_BASE_URL = "http://localhost:3000/admin";
+export const API_BASE_URL = "https://api.winnerspin.in.net/admin/";
 
 export const apiRequest = async (
   endpoint: string,
