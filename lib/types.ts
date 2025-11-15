@@ -70,13 +70,15 @@ export interface Transaction {
 
 // =============================
 // 🧩 WITHDRAWAL INTERFACE
+// =============================// =============================
+// 🧩 WITHDRAWAL INTERFACE (FINAL)
 // =============================
 export interface Withdrawal {
   _id: string;
   promoterId: string;
 
-  requester: {
-    _id: string;
+  requester?: {
+    _id?: string;
     userid?: string;
     username?: string;
   };
@@ -88,16 +90,26 @@ export interface Withdrawal {
   createdAt: string;
   updatedAt: string;
 
-  requestDate?: string; // custom field BE may send
-  approvedAt?: string; // BE sends when approved
+  requestDate?: string;
+  approvedAt?: string;
 
-  promoterName?: string; // fallback BE value
-  promoterUsername?: string; // optional fallback
+  promoterName?: string;
+  promoterUsername?: string;
   notes?: string;
 
-  processedDate?: string; // optional BE value if you want to send
+  processedDate?: string;
 }
 
+// =============================
+// 🧩 EXTENDED WITHDRAWAL (FINAL)
+// =============================
+export type ExtendedWithdrawal = Withdrawal & {
+  requester?: {
+    _id?: string;
+    userid?: string;
+    username?: string;
+  };
+};
 
 // =============================
 // 🧩 REPAYMENT INTERFACE
@@ -153,13 +165,7 @@ export interface Customer {
 // =============================
 // 🧩 OPTIONAL FRONTEND EXTENSIONS
 // =============================
-export interface ExtendedWithdrawal extends Omit<Withdrawal, "requester"> {
-  requester: {
-    _id?: string;
-    userid?: string;
-    username?: string;
-  };
-}
+
 
 export interface ExtendedTransaction extends Transaction {
   seasonName?: string;
